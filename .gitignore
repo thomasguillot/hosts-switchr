@@ -2,6 +2,10 @@
 /docs
 /.superpowers
 
+# Release artifacts
+/dist
+/App/build
+
 # Swift / SwiftPM
 .build/
 .swiftpm/
