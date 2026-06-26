@@ -104,6 +104,13 @@ Hard-won during the UX pass; don't re-derive them.
 - **`main` is protected — never push to it directly.** Branch off `main`, push the branch, open a PR, and merge it. Branch protection requires an approving review and **linear history** (squash- or rebase-merge only — no merge commits); force-pushes and branch deletion are blocked. Repo admins may merge their own PR once it's green (admin bypass is enabled so a solo maintainer isn't locked out).
 - Conventional commit prefixes: `feat:`, `fix:`, `chore:`, `refactor:`, `test:`.
 
+## Releasing
+
+- Bump `MARKETING_VERSION` in `App/project.yml` — the DMG filename and the release tag derive from it.
+- Build the disk image: `./scripts/make-dmg.sh` → `dist/HostsSwitchr-<version>.dmg` (Release config, drag-to-Applications layout, **no custom background** — intentional). Requires `create-dmg` (`brew install create-dmg`). `dist/` and `App/build/` are git-ignored.
+- Publish: `gh release create vX.Y.Z dist/HostsSwitchr-X.Y.Z.dmg --title "Hosts Switchr X.Y.Z" --notes "…" --latest`. Put the unsigned first-launch note (right-click → Open) and the DMG SHA-256 in the body.
+- The app is **unsigned** (no Apple Developer Program) — permanent. Never add signing/notarization to the release flow.
+
 ## Security invariants — do not break these
 
 - **https-only sources.** `SourceURLPolicy.validated(_:)` is the single enforcement point. All paths that add or import a remote source URL must go through it.
