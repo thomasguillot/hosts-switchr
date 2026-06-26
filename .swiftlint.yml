@@ -1,0 +1,40 @@
+# SwiftLint config. Defers to the committed .swift-format on whitespace/indentation so the two
+# tools never fight; line_length matches .swift-format's lineLength (110).
+included:
+  - App/Sources
+  - HostsKit/Sources
+excluded:
+  - App/Sources/Info.plist
+disabled_rules:
+  # Owned by swift-format (avoid dueling formatters):
+  - trailing_whitespace
+  - opening_brace
+  - statement_position
+  - todo
+  # Line length is enforced by swift-format (lineLength: 110); disabling here avoids
+  # triggering on existing lines that swift-format would wrap in a future format pass.
+  - line_length
+  # Trailing commas on multi-line collection literals are a style preference;
+  # AuthorizationPrivilegedRunner.swift cannot be modified (privileged-runner contract).
+  - trailing_comma
+  # AppModel is a single-class scene coordinator; splitting it would add indirection with
+  # no safety benefit at this project size, and splitting across files would force relaxing
+  # private(set) on critical apply-state. file_length stays ENABLED with a raised threshold
+  # (below) as a runaway-growth tripwire rather than being disabled outright.
+  - type_body_length
+  # ProfileStore uses private nested structs for tight encapsulation of persistence internals;
+  # flattening them would expose implementation details.
+  - nesting
+  # Keep the deliberate non-failable String(decoding:as:) idiom: a fetched blocklist with a
+  # stray invalid-UTF-8 byte should still decode (replacement chars) and parse, not collapse
+  # to "" and be discarded. A style lint rule must not change runtime semantics.
+  - optional_data_string_conversion
+identifier_name:
+  min_length: 1            # allow short names like `c`, `s`, `p` used in tests/helpers
+type_name:
+  min_length: 2
+file_length:
+  # Raised from the SwiftLint default (400) so AppModel can stay a single cohesive,
+  # well-encapsulated coordinator; still trips on genuine runaway growth.
+  warning: 600
+  error: 800
