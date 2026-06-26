@@ -101,7 +101,7 @@ Hard-won during the UX pass; don't re-derive them.
 ## Commit conventions
 
 - No `Co-Authored-By` trailers.
-- Work on `main` (no feature branches).
+- **`main` is protected — never push to it directly.** Branch off `main`, push the branch, open a PR, and merge it. Branch protection requires an approving review and **linear history** (squash- or rebase-merge only — no merge commits); force-pushes and branch deletion are blocked. Repo admins may merge their own PR once it's green (admin bypass is enabled so a solo maintainer isn't locked out).
 - Conventional commit prefixes: `feat:`, `fix:`, `chore:`, `refactor:`, `test:`.
 
 ## Security invariants — do not break these
