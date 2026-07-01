@@ -16,7 +16,7 @@ DIST_DIR="$ROOT/dist"
 command -v xcodegen   >/dev/null || { echo "error: xcodegen not found (brew install xcodegen)"   >&2; exit 1; }
 command -v create-dmg >/dev/null || { echo "error: create-dmg not found (brew install create-dmg)" >&2; exit 1; }
 
-VERSION="$(grep -m1 'MARKETING_VERSION' "$APP_DIR/project.yml" | sed -E 's/.*"([^"]+)".*/\1/')"
+VERSION="$(grep -m1 -E '^[[:space:]]*MARKETING_VERSION:' "$APP_DIR/project.yml" | sed -E 's/.*"([^"]+)".*/\1/')"
 echo "==> Building Hosts Switchr $VERSION (Release)"
 
 cd "$APP_DIR"
