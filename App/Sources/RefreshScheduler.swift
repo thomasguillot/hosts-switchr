@@ -4,15 +4,22 @@ import Observation
 
 @MainActor
 final class RefreshScheduler {
+    // Grace period after launch before the first refresh, so a re-apply (admin prompt) doesn't hit the user mid-boot.
+    static let launchDelay: Duration = .seconds(300)
+
     private weak var model: AppModel?
     private var timer: Timer?
+    private var launchTask: Task<Void, Never>?
     private let prefs = Preferences()
 
     init(model: AppModel) { self.model = model }
 
     func start() {
         if RefreshDuePolicy.isDue(lastRefresh: prefs.lastRefreshAt, now: Date(), intervalHours: prefs.refreshIntervalHours) {
-            Task { [weak model] in await model?.refreshAllSources() }
+            launchTask = Task { [weak model] in
+                do { try await Task.sleep(for: Self.launchDelay) } catch { return }
+                await model?.refreshAllSources()
+            }
         }
         reschedule()
     }
@@ -28,5 +35,5 @@ final class RefreshScheduler {
         timer = t
     }
 
-    func stop() { timer?.invalidate(); timer = nil }
+    func stop() { launchTask?.cancel(); launchTask = nil; timer?.invalidate(); timer = nil }
 }
