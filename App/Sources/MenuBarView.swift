@@ -4,6 +4,7 @@ import HostsKit
 
 struct MenuBarView: View {
     @Environment(AppModel.self) private var model
+    @Environment(UpdateController.self) private var update
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -25,7 +26,28 @@ struct MenuBarView: View {
             openWindow(id: "main")
         }
         SettingsLink { Text("Settings\u{2026}") }
+        updateItem
         Divider()
         Button("Quit") { model.flushPendingSave(); NSApplication.shared.terminate(nil) }
+    }
+
+    @ViewBuilder
+    private var updateItem: some View {
+        switch update.state {
+        case let .available(version, _, _):
+            Button {
+                Task { await update.downloadAndOpen() }
+            } label: {
+                Label("Update to v\(version)\u{2026}", systemImage: "arrow.down.circle.fill")
+            }
+        case .checking:
+            Button("Checking for Updates\u{2026}") {}.disabled(true)
+        case .downloading:
+            Button("Downloading Update\u{2026}") {}.disabled(true)
+        default:
+            Button("Check for Updates\u{2026}") {
+                Task { await update.checkNow(userInitiated: true) }
+            }
+        }
     }
 }

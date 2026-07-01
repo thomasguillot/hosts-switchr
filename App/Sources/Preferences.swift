@@ -7,6 +7,7 @@ struct Preferences {
     private enum Keys {
         static let refreshIntervalHours = "refreshIntervalHours"   // 0 = Off
         static let autoReapply = "autoReapply"
+        static let autoCheckForUpdates = "autoCheckForUpdates"
         static let lastRefreshAt = "lastRefreshAt"
     }
 
@@ -26,6 +27,14 @@ struct Preferences {
             return defaults.bool(forKey: Keys.autoReapply)
         }
         set { defaults.set(newValue, forKey: Keys.autoReapply) }
+    }
+
+    var autoCheckForUpdates: Bool {
+        get {
+            if defaults.object(forKey: Keys.autoCheckForUpdates) == nil { return true }
+            return defaults.bool(forKey: Keys.autoCheckForUpdates)
+        }
+        set { defaults.set(newValue, forKey: Keys.autoCheckForUpdates) }
     }
 
     // nil = never refreshed; gates the launch refresh against refreshIntervalHours.

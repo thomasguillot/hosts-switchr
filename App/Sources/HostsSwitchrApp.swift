@@ -4,10 +4,13 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    let updateController = UpdateController()
+    lazy var updateScheduler = UpdateScheduler(controller: updateController)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The main window is suppressed, so bootstrap here to load/schedule on a quiet login-launch.
         model.bootstrap()
+        updateScheduler.start()
     }
 
     func applicationDidResignActive(_ notification: Notification) {
@@ -93,7 +96,9 @@ struct HostsSwitchrApp: App {
         .defaultSize(width: 560, height: 640)
         .windowResizability(.contentMinSize)
         MenuBarExtra {
-            MenuBarView().environment(appDelegate.model)
+            MenuBarView()
+                .environment(appDelegate.model)
+                .environment(appDelegate.updateController)
         } label: {
             MenuBarLabel().environment(appDelegate.model)
         }

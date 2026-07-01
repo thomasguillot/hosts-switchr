@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("refreshIntervalHours") private var intervalHours: Int = 24
     @AppStorage("autoReapply") private var autoReapply: Bool = true
     @AppStorage("showActiveNameInMenuBar") private var showActiveName = false
+    @AppStorage("autoCheckForUpdates") private var autoCheckForUpdates = true
 
     private let loginItem: LoginItemControlling = SMAppServiceLoginItem()
     @State private var launchAtLogin = false
@@ -24,6 +25,7 @@ struct SettingsView: View {
             .fixedSize()
             Toggle("Auto re-apply active profile after refresh", isOn: $autoReapply)
             Toggle("Show active profile name in menu bar", isOn: $showActiveName)
+            Toggle("Automatically check for updates on launch", isOn: $autoCheckForUpdates)
             Toggle("Launch at login", isOn: Binding(
                 get: { launchAtLogin },
                 set: { newValue in
