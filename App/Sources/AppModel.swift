@@ -505,7 +505,8 @@ final class AppModel {
         defer { isRefreshing = false }
         let refresher = SourceRefresher(fetcher: fetcher)
         let outcomes = await refresher.refreshAll(in: catalog)
-        prefs.lastRefreshAt = Date()
+        let allFailed = !outcomes.isEmpty && outcomes.allSatisfy { if case .failed = $0.kind { true } else { false } }
+        if !allFailed { prefs.lastRefreshAt = Date() }
         refresh()
         await handleRefreshOutcomes(outcomes)
     }

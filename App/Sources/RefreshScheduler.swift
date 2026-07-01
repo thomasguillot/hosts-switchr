@@ -5,35 +5,36 @@ import Observation
 @MainActor
 final class RefreshScheduler {
     // Grace period after launch before the first refresh, so a re-apply (admin prompt) doesn't hit the user mid-boot.
-    static let launchDelay: Duration = .seconds(300)
+    static let launchGrace: TimeInterval = 300
 
     private weak var model: AppModel?
     private var timer: Timer?
-    private var launchTask: Task<Void, Never>?
     private let prefs = Preferences()
 
     init(model: AppModel) { self.model = model }
 
-    func start() {
-        if RefreshDuePolicy.isDue(lastRefresh: prefs.lastRefreshAt, now: Date(), intervalHours: prefs.refreshIntervalHours) {
-            launchTask = Task { [weak model] in
-                do { try await Task.sleep(for: Self.launchDelay) } catch { return }
-                await model?.refreshAllSources()
-            }
-        }
-        reschedule()
-    }
+    func start() { schedule(isLaunch: true) }
 
-    func reschedule() {
+    func reschedule() { schedule(isLaunch: false) }
+
+    func stop() { timer?.invalidate(); timer = nil }
+
+    private func schedule(isLaunch: Bool) {
         timer?.invalidate(); timer = nil
-        guard let hours = prefs.refreshIntervalHours else { return }
-        let interval = TimeInterval(hours) * 3600
-        let t = Timer(timeInterval: interval, repeats: true) { [weak model] _ in
-            Task { @MainActor in await model?.refreshAllSources() }
+        guard let delay = RefreshSchedule.nextDelay(
+            isLaunch: isLaunch,
+            lastRefresh: prefs.lastRefreshAt,
+            now: Date(),
+            intervalHours: prefs.refreshIntervalHours,
+            graceSeconds: Self.launchGrace
+        ) else { return }
+        let t = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.model?.refreshAllSources()
+                self?.schedule(isLaunch: false)
+            }
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
     }
-
-    func stop() { launchTask?.cancel(); launchTask = nil; timer?.invalidate(); timer = nil }
 }
