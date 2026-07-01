@@ -18,7 +18,13 @@ A native macOS menu-bar app for managing `/etc/hosts` through switchable profile
 
 ### Install
 
-The app is unsigned (it deliberately uses no Apple Developer Program, signing, or privileged helper). To run an unsigned build, **right-click the app → Open** the first time and confirm in the dialog — macOS only asks once. After that it launches normally.
+The app is unsigned (it deliberately uses no Apple Developer Program, signing, or privileged helper), so macOS blocks it on first launch. To allow it:
+
+1. Double-click **Hosts Switchr**; when macOS warns it "can't verify the developer," click **Done** (*not* "Move to Trash").
+2. Open **System Settings → Privacy & Security** and scroll to the **Security** section.
+3. Click **Open Anyway** next to *"Hosts Switchr" was blocked to protect your Mac*, then authenticate and click **Open**.
+
+macOS only asks once — after that it launches normally.
 
 If you don't have a prebuilt app, build it from source — see [For developers](#for-developers).
 
