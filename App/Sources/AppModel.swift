@@ -24,7 +24,7 @@ final class AppModel {
     private let runner: AuthorizationPrivilegedRunner
     private let composer = MergedHostsComposer()
     private let fetcher: SourceFetching
-    private let prefs = Preferences()
+    private var prefs = Preferences()
     private var saveTask: Task<Void, Never>?
     private var pendingSave: Profile?
     private var scheduler: RefreshScheduler?
@@ -505,6 +505,7 @@ final class AppModel {
         defer { isRefreshing = false }
         let refresher = SourceRefresher(fetcher: fetcher)
         let outcomes = await refresher.refreshAll(in: catalog)
+        prefs.lastRefreshAt = Date()
         refresh()
         await handleRefreshOutcomes(outcomes)
     }

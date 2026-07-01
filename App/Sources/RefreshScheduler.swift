@@ -1,4 +1,5 @@
 import Foundation
+import HostsKit
 import Observation
 
 @MainActor
@@ -10,7 +11,9 @@ final class RefreshScheduler {
     init(model: AppModel) { self.model = model }
 
     func start() {
-        Task { [weak model] in await model?.refreshAllSources() }
+        if RefreshDuePolicy.isDue(lastRefresh: prefs.lastRefreshAt, now: Date(), intervalHours: prefs.refreshIntervalHours) {
+            Task { [weak model] in await model?.refreshAllSources() }
+        }
         reschedule()
     }
 
