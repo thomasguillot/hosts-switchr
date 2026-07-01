@@ -120,9 +120,12 @@ final class UpdateController {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = "Update downloaded"
-        alert.informativeText = "The disk image has opened. Drag Hosts Switchr to your Applications folder, then quit and reopen the app to finish updating."
-        alert.addButton(withTitle: "Quit Hosts Switchr")
-        alert.addButton(withTitle: "OK")
+        alert.informativeText =
+            "The disk image is open in Finder. To finish updating: quit Hosts Switchr first, "
+            + "then drag it onto your Applications folder to replace this version, then reopen it."
+            + "\n\nQuitting before you drag avoids a \u{201C}Hosts Switchr is in use\u{201D} error."
+        alert.addButton(withTitle: "Quit Now")
+        alert.addButton(withTitle: "Later")
         if alert.runModal() == .alertFirstButtonReturn {
             // applicationWillTerminate flushes any pending save before exit.
             NSApplication.shared.terminate(nil)
