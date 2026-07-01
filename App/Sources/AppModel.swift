@@ -231,13 +231,11 @@ final class AppModel {
         fragmentSaveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
             if Task.isCancelled { return }
-            let saved: Bool = await MainActor.run {
-                guard let self, self.pendingFragmentSave == snapshot else { return false }  // act only on the latest pending edit
-                let ok = self.persistFragment(snapshot)
-                if ok { self.pendingFragmentSave = nil }
-                return ok
+            await MainActor.run {
+                // Act only on the latest pending edit; clear only on a successful write so a failed save keeps it pending and composeAndApply refuses to publish it.
+                guard let self, self.pendingFragmentSave == snapshot else { return }
+                if self.persistFragment(snapshot) { self.pendingFragmentSave = nil }
             }
-            if saved { await self?.autoReapplyIfActiveIncludesFragment(snapshot.id) }
         }
     }
 
@@ -256,24 +254,6 @@ final class AppModel {
         flushPendingSave()
         run { store in try store.setFragments(id, ids) }
         if id == activeProfileID { staleProfileIDs.insert(id) }
-    }
-
-    func autoReapplyIfActiveIncludesFragment(_ fragmentID: UUID) async {
-        guard prefs.autoReapply, !isApplying,
-              let activeID = activeProfileID,
-              let active = profiles.first(where: { $0.id == activeID }),
-              active.fragmentIDs.contains(fragmentID) else { return }
-        isApplying = true
-        defer { isApplying = false }
-        if activeProfileID == activeID {
-            do {
-                let outcome = try await composeAndApply(active)
-                if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
-                notify("Hosts Switchr", "Updated \(active.name) from an edited fragment")
-            } catch {
-                lastError = "Auto re-apply failed (\(error.localizedDescription)). Re-apply when ready."
-            }
-        }
     }
 
     // MARK: Import / Export
