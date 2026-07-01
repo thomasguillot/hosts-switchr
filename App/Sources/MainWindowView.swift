@@ -54,7 +54,7 @@ struct MainWindowView: View {
                 }
             case .fragments:
                 if let id = model.selectedFragmentID {
-                    FragmentEditorView(fragmentID: id)
+                    FragmentEditorView(fragmentID: id, requestApply: { requestPreview($0) })
                 } else if !model.fragments.isEmpty {
                     placeholder("No Fragment Selected", "rectangle.stack")
                 }
