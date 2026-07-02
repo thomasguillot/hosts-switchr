@@ -27,8 +27,10 @@ struct ProfileSidebarView: View {
                         Text(profile.name)
                     }
                     if model.staleProfileIDs.contains(profile.id) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.caption).foregroundStyle(.orange)
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .help("Out of date — Apply to update")
+                            .accessibilityLabel("Out of date")
                     }
                     if profile.isProtected { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
                 }
