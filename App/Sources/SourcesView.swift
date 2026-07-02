@@ -16,6 +16,7 @@ struct SourcesView: View {
             if !customs.isEmpty {
                 sectionLabel("Your sources").padding(.top, 8)
                 ForEach(customs) { sourceRow($0) }
+                    .onMove { model.moveCustomSources(fromOffsets: $0, toOffset: $1) }
             }
             Button("Add Source") { onAddSource() }
                 .buttonStyle(.bordered)

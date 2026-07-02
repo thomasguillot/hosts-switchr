@@ -346,3 +346,45 @@ private func tempRoot() -> URL {
     try store.rename(p.id, to: "Dev")
     #expect(store.profiles.first { $0.id == p.id }?.name == "Dev")
 }
+
+@Test func store_reorder_persistsAcrossReload() throws {
+    let root = tempRoot()
+    let store = try ProfileStore(root: root)
+    try store.seedSystemDefaultIfEmpty(currentHosts: "127.0.0.1 localhost")
+    let def = store.profiles.first { $0.isProtected }!
+    let a = try store.create(name: "A", content: "")
+    let b = try store.create(name: "B", content: "")
+
+    try store.reorder([def.id, b.id, a.id])
+    #expect(store.profiles.map(\.id) == [def.id, b.id, a.id])
+
+    let reopened = try ProfileStore(root: root)
+    #expect(reopened.profiles.map(\.id) == [def.id, b.id, a.id])
+}
+
+@Test func store_reorder_pinsProtectedFirst() throws {
+    let root = tempRoot()
+    let store = try ProfileStore(root: root)
+    try store.seedSystemDefaultIfEmpty(currentHosts: "127.0.0.1 localhost")
+    let def = store.profiles.first { $0.isProtected }!
+    let a = try store.create(name: "A", content: "")
+    let b = try store.create(name: "B", content: "")
+
+    try store.reorder([a.id, b.id, def.id])
+    #expect(store.profiles.map(\.id) == [def.id, a.id, b.id])
+
+    let reopened = try ProfileStore(root: root)
+    #expect(reopened.profiles.map(\.id) == [def.id, a.id, b.id])
+}
+
+@Test func store_reorder_ignoresUnknownAndAppendsOmittedByCreatedAt() throws {
+    let store = try ProfileStore(root: tempRoot())
+    let older = Profile(name: "Older", content: "", createdAt: Date(timeIntervalSince1970: 100))
+    let newer = Profile(name: "Newer", content: "", createdAt: Date(timeIntervalSince1970: 200))
+    try store.add(newer)
+    try store.add(older)
+    let kept = try store.create(name: "Kept", content: "")
+
+    try store.reorder([UUID(), kept.id])
+    #expect(store.profiles.map(\.id) == [kept.id, older.id, newer.id])
+}

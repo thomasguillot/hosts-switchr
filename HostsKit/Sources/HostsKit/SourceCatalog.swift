@@ -134,6 +134,17 @@ public final class SourceCatalog: @unchecked Sendable {
         }
     }
 
+    public func reorderCustoms(_ orderedIDs: [UUID]) throws {
+        try lock.withLock {
+            let customs = _sources.filter { $0.kind == .custom }
+            let byID = Dictionary(uniqueKeysWithValues: customs.map { ($0.id, $0) })
+            let ordered = orderedIDs.compactMap { byID[$0] }
+            let leftovers = customs.filter { !orderedIDs.contains($0.id) }
+            _sources = _sources.filter { $0.kind == .builtin } + ordered + leftovers
+            try saveLocked()
+        }
+    }
+
     public func update(_ source: RemoteSource) throws {
         try lock.withLock {
             guard let idx = _sources.firstIndex(where: { $0.id == source.id }) else { throw SourceError.notFound }

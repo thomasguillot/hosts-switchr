@@ -150,3 +150,39 @@ private func tempRoot() -> URL {
         try catalog.add(RemoteSource(id: UUID(), name: "Y", url: URL(string: "http://e.com/h")!, kind: .custom))
     }
 }
+
+@Test func catalog_reorderCustoms_persistsAcrossReload() throws {
+    let root = tempRoot()
+    let c = try SourceCatalog(root: root)
+    let s1 = try c.addCustom(name: "One", urlString: "https://example.com/1.txt")
+    let s2 = try c.addCustom(name: "Two", urlString: "https://example.com/2.txt")
+
+    try c.reorderCustoms([s2.id, s1.id])
+    #expect(c.sources.filter { $0.kind == .custom }.map(\.id) == [s2.id, s1.id])
+    #expect(c.sources.filter { $0.kind == .builtin }.map(\.id) == BuiltinSources.all.map(\.id))
+    #expect(c.sources.prefix(BuiltinSources.all.count).allSatisfy { $0.kind == .builtin })
+
+    let reopened = try SourceCatalog(root: root)
+    #expect(reopened.sources.filter { $0.kind == .custom }.map(\.id) == [s2.id, s1.id])
+}
+
+@Test func catalog_reorderCustoms_ignoresBuiltinAndUnknownIDs() throws {
+    let c = try SourceCatalog(root: tempRoot())
+    let s1 = try c.addCustom(name: "One", urlString: "https://example.com/1.txt")
+    let s2 = try c.addCustom(name: "Two", urlString: "https://example.com/2.txt")
+
+    try c.reorderCustoms([BuiltinSources.all[0].id, UUID(), s2.id, s1.id])
+    #expect(c.sources.filter { $0.kind == .builtin }.map(\.id) == BuiltinSources.all.map(\.id))
+    #expect(c.sources.filter { $0.kind == .custom }.map(\.id) == [s2.id, s1.id])
+    #expect(c.sources.prefix(BuiltinSources.all.count).allSatisfy { $0.kind == .builtin })
+}
+
+@Test func catalog_reorderCustoms_keepsOmittedCustomsInExistingOrder() throws {
+    let c = try SourceCatalog(root: tempRoot())
+    let s1 = try c.addCustom(name: "One", urlString: "https://example.com/1.txt")
+    let s2 = try c.addCustom(name: "Two", urlString: "https://example.com/2.txt")
+    let s3 = try c.addCustom(name: "Three", urlString: "https://example.com/3.txt")
+
+    try c.reorderCustoms([s3.id])
+    #expect(c.sources.filter { $0.kind == .custom }.map(\.id) == [s3.id, s1.id, s2.id])
+}
