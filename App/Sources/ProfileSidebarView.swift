@@ -47,7 +47,9 @@ struct ProfileSidebarView: View {
                     }.disabled(profile.isProtected || profile.id == model.activeProfileID)
                 }
                 .listRowSeparator(.hidden)
+                .moveDisabled(profile.isProtected)
             }
+            .onMove { model.moveProfiles(fromOffsets: $0, toOffset: $1) }
             Button("Add Profile") { createAndRename() }
                 .buttonStyle(.bordered)
                 .padding(.top, 8)

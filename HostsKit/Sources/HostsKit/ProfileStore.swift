@@ -212,6 +212,16 @@ public final class ProfileStore {
         if changed { try save() }
     }
 
+    public func reorder(_ orderedIDs: [UUID]) throws {
+        let byID = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+        let ordered = orderedIDs.compactMap { byID[$0] }
+        let leftovers = profiles.filter { !orderedIDs.contains($0.id) }
+        let merged = ordered + leftovers.sorted { $0.createdAt < $1.createdAt }
+        // Protected profiles stay pinned at the top regardless of the requested order.
+        profiles = merged.filter(\.isProtected) + merged.filter { !$0.isProtected }
+        try save()
+    }
+
     public func delete(_ id: UUID) throws {
         guard let profile = profiles.first(where: { $0.id == id }) else { throw ProfileError.notFound }
         if profile.isProtected { throw ProfileError.protectedProfile }

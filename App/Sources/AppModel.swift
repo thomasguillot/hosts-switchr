@@ -181,6 +181,22 @@ final class AppModel {
         if id == activeProfileID { staleProfileIDs.insert(id) }
     }
 
+    func moveProfiles(fromOffsets source: IndexSet, toOffset destination: Int) {
+        guard let store else { return }
+        var ids = profiles.map(\.id)
+        ids.move(fromOffsets: source, toOffset: destination)
+        do { try store.reorder(ids); refresh() }
+        catch { lastError = "Couldn’t reorder the profiles. Please try again." }
+    }
+
+    func moveCustomSources(fromOffsets source: IndexSet, toOffset destination: Int) {
+        guard let catalog else { return }
+        var ids = sources.filter { $0.kind == .custom }.map(\.id)
+        ids.move(fromOffsets: source, toOffset: destination)
+        do { try catalog.reorderCustoms(ids); refresh() }
+        catch { lastError = "Couldn’t reorder the sources. Please try again." }
+    }
+
     // MARK: Fragments
 
     @discardableResult
