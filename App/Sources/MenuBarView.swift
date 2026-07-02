@@ -15,7 +15,7 @@ struct MenuBarView: View {
             } label: {
                 let isActive = profile.id == model.activeProfileID
                 let stale = model.staleProfileIDs.contains(profile.id)
-                Label(profile.name + (stale ? " \u{26A0}\u{FE0E}" : ""),
+                Label(profile.name + (stale ? " \u{21BB}" : ""),
                       systemImage: isActive ? "checkmark" : "")
             }
         }
