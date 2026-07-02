@@ -112,6 +112,14 @@ public final class FragmentStore {
         try save()
     }
 
+    public func reorder(_ orderedIDs: [UUID]) throws {
+        let byID = Dictionary(uniqueKeysWithValues: fragments.map { ($0.id, $0) })
+        let ordered = orderedIDs.compactMap { byID[$0] }
+        let leftovers = fragments.filter { !orderedIDs.contains($0.id) }
+        fragments = ordered + leftovers.sorted { $0.createdAt < $1.createdAt }
+        try save()
+    }
+
     public func delete(_ id: UUID) throws {
         guard fragments.contains(where: { $0.id == id }) else { throw ProfileError.notFound }
         // Remove the backing file first (fail closed) so a failed removal can't leave an orphan that load() re-imports.

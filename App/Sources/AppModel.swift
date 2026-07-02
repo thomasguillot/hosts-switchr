@@ -211,6 +211,14 @@ final class AppModel {
         refresh()
     }
 
+    func moveFragments(fromOffsets source: IndexSet, toOffset destination: Int) {
+        guard let fragmentStore else { return }
+        var ids = fragments.map(\.id)
+        ids.move(fromOffsets: source, toOffset: destination)
+        do { try fragmentStore.reorder(ids); refresh() }
+        catch { lastError = "Couldn’t reorder the fragments. Please try again." }
+    }
+
     func warningsForFragment(_ id: UUID) -> [HostsWarning] {
         guard let f = fragments.first(where: { $0.id == id }) else { return [] }
         return HostsValidator.validate(HostsFile(parsing: f.content))

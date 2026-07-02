@@ -39,6 +39,7 @@ struct FragmentsSidebarView: View {
                         }
                         .listRowSeparator(.hidden)
                     }
+                    .onMove { model.moveFragments(fromOffsets: $0, toOffset: $1) }
                     Button("Add Fragment") { createAndRename() }
                         .buttonStyle(.bordered)
                         .padding(.top, 8)
