@@ -61,6 +61,8 @@ final class AppModel {
             }
             try store.seedSystemDefaultIfEmpty(currentHosts: current)
             refresh()
+            if let s = AppliedProfileState.load(from: AppliedProfileState.defaultURL),
+               s.profile.id == store.activeProfileID { appliedState = s; recomputeActiveStale() }
             if scheduler == nil {
                 let s = RefreshScheduler(model: self); s.start(); self.scheduler = s
             }
@@ -141,7 +143,7 @@ final class AppModel {
         guard let idx = profiles.firstIndex(where: { $0.id == id }) else { return }
         if profiles[idx].content == content { return }
         profiles[idx].content = content
-        if id == activeProfileID { staleProfileIDs.insert(id) }
+        if id == activeProfileID { recomputeActiveStale() }
         let snapshot = profiles[idx]
         pendingSave = snapshot
         saveTask?.cancel()
@@ -178,21 +180,19 @@ final class AppModel {
     func setProfileSources(_ id: UUID, _ ids: [UUID]) {
         flushPendingSave()
         run { store in try store.setSources(id, ids) }
-        if id == activeProfileID { staleProfileIDs.insert(id) }
+        if id == activeProfileID { recomputeActiveStale() }
     }
 
     func moveProfiles(fromOffsets source: IndexSet, toOffset destination: Int) {
         guard let store else { return }
-        var ids = profiles.map(\.id)
-        ids.move(fromOffsets: source, toOffset: destination)
+        var ids = profiles.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try store.reorder(ids); refresh() }
         catch { lastError = "Couldn’t reorder the profiles. Please try again." }
     }
 
     func moveCustomSources(fromOffsets source: IndexSet, toOffset destination: Int) {
         guard let catalog else { return }
-        var ids = sources.filter { $0.kind == .custom }.map(\.id)
-        ids.move(fromOffsets: source, toOffset: destination)
+        var ids = sources.filter { $0.kind == .custom }.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try catalog.reorderCustoms(ids); refresh() }
         catch { lastError = "Couldn’t reorder the sources. Please try again." }
     }
@@ -223,14 +223,13 @@ final class AppModel {
             try fragmentStore.delete(id)
         } catch { lastError = "Couldn’t delete the fragment. Please try again." }
         if selectedFragmentID == id { selectedFragmentID = nil }
-        if let activeID = activeProfileID, affected.contains(activeID) { staleProfileIDs.insert(activeID) }
         refresh()
+        if let activeID = activeProfileID, affected.contains(activeID) { recomputeActiveStale() }
     }
 
     func moveFragments(fromOffsets source: IndexSet, toOffset destination: Int) {
         guard let fragmentStore else { return }
-        var ids = fragments.map(\.id)
-        ids.move(fromOffsets: source, toOffset: destination)
+        var ids = fragments.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try fragmentStore.reorder(ids); refresh() }
         catch { lastError = "Couldn’t reorder the fragments. Please try again." }
     }
@@ -247,7 +246,7 @@ final class AppModel {
         // Only the active profile is live in /etc/hosts; others recompose fresh on apply, so don't badge them.
         if let activeID = activeProfileID,
            profiles.contains(where: { $0.id == activeID && $0.fragmentIDs.contains(id) }) {
-            staleProfileIDs.insert(activeID)
+            recomputeActiveStale()
         }
         let snapshot = fragments[idx]
         pendingFragmentSave = snapshot
@@ -277,7 +276,7 @@ final class AppModel {
     func setProfileFragments(_ id: UUID, _ ids: [UUID]) {
         flushPendingSave()
         run { store in try store.setFragments(id, ids) }
-        if id == activeProfileID { staleProfileIDs.insert(id) }
+        if id == activeProfileID { recomputeActiveStale() }
     }
 
     // MARK: Import / Export
@@ -393,8 +392,9 @@ final class AppModel {
                 // Roll back so a failed catalog delete doesn't detach the source from every profile.
                 for p in affected { try? store.setSources(p.id, p.sourceIDs) }; throw error
             }
-            for p in affected { staleProfileIDs.insert(p.id) }
+            for p in affected where p.id != activeProfileID { staleProfileIDs.insert(p.id) }
             refresh()
+            if let a = activeProfileID, affected.contains(where: { $0.id == a }) { recomputeActiveStale() }
         } catch { lastError = "Couldn’t remove the source. Please try again."; refresh() }
     }
 
@@ -470,6 +470,27 @@ final class AppModel {
         return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen)
     }
 
+    private(set) var appliedState: AppliedProfileState?
+
+    // No snapshot (pre-first-apply) falls back to insert: fail-safe toward stale, never toward clean.
+    private func recomputeActiveStale() {
+        guard let id = activeProfileID else { return }
+        guard let a = appliedState, a.profile.id == id,
+              let cur = profiles.first(where: { $0.id == id }) else { staleProfileIDs.insert(id); return }
+        if a.matches(cur, fragments: fragments, sources: sources) { staleProfileIDs.remove(id) }
+        else { staleProfileIDs.insert(id) }
+    }
+
+    func revertActiveProfile() {
+        guard let store, let a = appliedState, a.profile.id == activeProfileID,
+              var cur = profiles.first(where: { $0.id == a.profile.id }) else { return }
+        saveTask?.cancel(); saveTask = nil; pendingSave = nil
+        // Restore only what apply composed; keep a post-apply rename.
+        cur.content = a.profile.content; cur.sourceIDs = a.profile.sourceIDs; cur.fragmentIDs = a.profile.fragmentIDs
+        do { try store.update(cur) } catch { lastError = "Couldn’t revert the profile. Please try again." }
+        refresh(); recomputeActiveStale()
+    }
+
     // Not current if the profile changed/deleted mid-compose, so its stale badge must remain.
     private func snapshotIsCurrent(_ snapshot: Profile) -> Bool {
         profiles.first(where: { $0.id == snapshot.id })
@@ -480,12 +501,14 @@ final class AppModel {
         if isApplying { return }; isApplying = true; defer { isApplying = false }
         lastError = nil
         guard let store, let p = profiles.first(where: { $0.id == id }) else { return }
+        let snap = AppliedProfileState.capture(p, fragments: fragments, sources: sources)
         let outcome: ApplyOutcome
         do { outcome = try await composeAndApply(p) } catch {
             lastError = "Apply failed: \(error.localizedDescription)"; return
         }
         // Commit point: a later metadata-save failure must not be reported as an apply failure.
         store.setActive(id)
+        appliedState = snap; snap.save(to: AppliedProfileState.defaultURL)
         if snapshotIsCurrent(p) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(id) }
 
         do { try store.save() } catch {
@@ -542,7 +565,9 @@ final class AppModel {
                 // Re-check: the user may have switched the active profile while we refreshed.
                 if activeProfileID == activeID {
                     do {
+                        let snap = AppliedProfileState.capture(active, fragments: fragments, sources: sources)
                         let outcome = try await composeAndApply(active)
+                        appliedState = snap; snap.save(to: AppliedProfileState.defaultURL)
                         if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
                         notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists")
                     } catch {

@@ -21,7 +21,7 @@ struct FragmentsSidebarView: View {
             } else {
                 List(selection: $model.selectedFragmentID) {
                     ForEach(model.fragments) { fragment in
-                        Group {
+                        HStack {
                             if renamingID == fragment.id {
                                 TextField("Name", text: $renameText)
                                     .textFieldStyle(.plain)
@@ -30,6 +30,12 @@ struct FragmentsSidebarView: View {
                                     .onExitCommand { renamingID = nil }
                             } else {
                                 Text(fragment.name)
+                            }
+                            if model.fragmentNeedsApply(fragment.id) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .help("Out of date — re-apply the active profile to update")
+                                    .accessibilityLabel("Out of date")
                             }
                         }
                         .tag(fragment.id)

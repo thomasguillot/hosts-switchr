@@ -86,6 +86,13 @@ struct ProfileEditorView: View {
                     .buttonStyle(.borderedProminent)
                     .help("Apply this profile")
                     .disabled(model.isApplying || (profileID == model.activeProfileID && !isStale))
+                    if profileID == model.activeProfileID && isStale && model.canRevertActiveProfile {
+                        Button("Cancel") {
+                            model.revertActiveProfile()
+                            text = profile?.content ?? ""
+                        }
+                        .help("Discard these changes and go back to what's applied")
+                    }
                     Spacer()
                 }
                 .padding(8)
