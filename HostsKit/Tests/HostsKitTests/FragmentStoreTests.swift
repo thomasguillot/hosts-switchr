@@ -66,6 +66,41 @@ import Foundation
         #expect(b.name == "untitled fragment 2")
     }
 
+    @Test func reorder_persistsAcrossReload() throws {
+        let root = tmpRoot()
+        let store = try FragmentStore(root: root)
+        let a = try store.create(name: "A", content: "")
+        let b = try store.create(name: "B", content: "")
+        let c = try store.create(name: "C", content: "")
+
+        try store.reorder([c.id, a.id, b.id])
+        #expect(store.fragments.map(\.id) == [c.id, a.id, b.id])
+
+        let reloaded = try FragmentStore(root: root)
+        #expect(reloaded.fragments.map(\.id) == [c.id, a.id, b.id])
+    }
+
+    @Test func reorder_ignoresUnknownIDs() throws {
+        let store = try FragmentStore(root: tmpRoot())
+        let a = try store.create(name: "A", content: "")
+        let b = try store.create(name: "B", content: "")
+
+        try store.reorder([UUID(), b.id, UUID(), a.id])
+        #expect(store.fragments.map(\.id) == [b.id, a.id])
+    }
+
+    @Test func reorder_appendsOmittedIDsByCreatedAt() throws {
+        let store = try FragmentStore(root: tmpRoot())
+        let older = LocalFragment(name: "Older", content: "", createdAt: Date(timeIntervalSince1970: 100))
+        let newer = LocalFragment(name: "Newer", content: "", createdAt: Date(timeIntervalSince1970: 200))
+        try store.add(newer)
+        try store.add(older)
+        let kept = try store.create(name: "Kept", content: "")
+
+        try store.reorder([kept.id])
+        #expect(store.fragments.map(\.id) == [kept.id, older.id, newer.id])
+    }
+
     @Test func rename_toExistingName_throwsDuplicate() throws {
         let store = try FragmentStore(root: tmpRoot())
         _ = try store.create(name: "Docker", content: "")
