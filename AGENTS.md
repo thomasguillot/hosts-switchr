@@ -83,7 +83,7 @@ After `xcodegen` regenerates the project, SourceKit's index goes stale and repor
 - **YAGNI.** No abstraction beyond what the current task requires.
 - **TDD.** HostsKit changes: write failing tests first.
 - **Fail-closed persistence.** Before overwriting any `.json` store file, write the corrupt original to a unique `.corrupt` path. Never swallow a load error silently.
-- **`file_length` rule:** `warning: 600, error: 800`. AppModel is ~567 lines and has repeatedly pressed the 600 warning — do not add to it without justification; net growth needs offsetting or the clean state-owning seam below.
+- **`file_length` rule:** `warning: 600, error: 800`. AppModel is ~598 lines and sits right against the 600 warning — do not add to it without justification; net growth needs offsetting or the clean state-owning seam below (e.g. move applied-state/staleness logic into `AppliedProfileState.swift`).
 
 ## SwiftUI / AppKit layout gotchas (main window)
 
@@ -133,6 +133,8 @@ PrivilegedRunner / AuthorizationPrivilegedRunner
 ```
 
 Merge order inside the temp file: **local profile content → local fragments (# name header) → remote source cache files**.
+
+**Applied-state snapshot & staleness.** Every successful apply writes an `appliedstate.json` snapshot (in `~/Library/Application Support/HostsSwitchr/`, same fail-closed `.corrupt` discipline as the other stores) capturing what actually reached `/etc/hosts`; it's loaded at launch. Staleness ("needs re-apply") is a comparison of the current profile/fragment/source state against that snapshot — undoing an edit clears the badge, and an identical source re-download does not stale (sources compare per-source content hashes, not the generation counter). If the snapshot is missing or corrupt, staleness latches toward stale. Generation counters survive only as mid-apply race guards, not as the staleness signal. `AppliedProfileState.swift` owns this subsystem and is the intended seam for offloading AppModel line pressure.
 
 **First-launch caveat — "System Default" is seeded from whatever `/etc/hosts` contains at first run** (`ProfileStore.seedSystemDefaultIfEmpty`). If the user migrates from another hosts manager (SwitchHosts, Gas Mask, …) that was still active at that moment, System Default captures *that tool's* output — not a clean baseline — so applying it later won't restore a pristine machine. There's no code workaround today; if a user reports a bloated/foreign System Default (e.g. a `# --- SWITCHHOSTS_CONTENT_START ---` block), reset its backing `~/Library/Application Support/HostsSwitchr/profiles/<id>.hosts` to the clean factory macOS hosts (the standard Apple header + the three loopback lines) while the app is quit, then relaunch.
 

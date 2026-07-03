@@ -12,9 +12,11 @@ A native macOS menu-bar app for managing `/etc/hosts` through switchable profile
 
 - **Profiles** — create, edit, and instantly switch named `/etc/hosts` configurations from the menu bar.
 - **Blocklist sources** — subscribe to hosts-format lists. Built in: **StevenBlack** (Unified, plus Fake News / Gambling / Porn / Social) and **HaGeZi** (Light → Normal → Pro → Pro++ → Ultimate). Sources auto-refresh with conditional-GET (ETag) caching, and you can add your own.
-- **Fragments** — reusable hosts snippets you toggle into any profile (e.g. a "Docker" fragment listing your local container hostnames, switched on only in your Dev profile).
+- **Fragments** — reusable hosts snippets you toggle into any profile (e.g. a "Docker" fragment listing your local container hostnames, switched on only in your Dev profile). A draft-based editor lets you save changes without a password prompt; you re-apply once when you're ready.
+- **Stale-aware apply** — profiles, fragments, and sources show a "needs re-apply" badge when your edits differ from what's live in `/etc/hosts`, and each editor has **Cancel** to revert unapplied changes back to the applied state.
+- **Drag-to-reorder** — reorder profiles, sources, and fragments directly in the sidebars.
 - **Import / export** — back up your whole setup to a JSON file, restore it on another machine, or import a plain hosts file as a profile or fragment.
-- **Launch at login** — runs quietly as a menu-bar-only app (no Dock icon), and can optionally show the active profile name next to the menu-bar icon.
+- **Launch at login & updates** — runs quietly as a menu-bar-only app (no Dock icon), can optionally show the active profile name next to the menu-bar icon, and checks GitHub Releases for new versions.
 
 ### Install
 
