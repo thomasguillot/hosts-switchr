@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hosts Switchr — switch your /etc/hosts from the menu bar</title>
+  <meta name="description" content="A native macOS menu-bar app for managing /etc/hosts through switchable profiles, blocklist sources, and reusable fragments. Free, open-source, and unsigned — no Apple Developer Program.">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+  <meta name="theme-color" content="#FCFCFD" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#161719" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Hosts Switchr">
+  <meta property="og:description" content="Switch your /etc/hosts with a click — profiles, blocklists, and reusable fragments, right from the menu bar.">
+  <meta property="og:image" content="assets/icon.png">
+  <meta property="og:url" content="https://thomasguillot.github.io/hosts-switchr/">
+  <meta name="twitter:card" content="summary">
+  <style>
+  :root {
+    --bg: #FCFCFD;
+    --surface: #FFFFFF;
+    --surface-2: #F3F4F6;
+    --border: #E4E6EB;
+    --border-strong: #D3D6DD;
+    --text: #1B1D22;
+    --muted: #656A73;
+    --faint: #8A8F98;
+    --accent: #3F434B;        /* graphite fallback — keeps the grey identity where AccentColor is unsupported */
+    --on-accent: #FFFFFF;
+    --accent-soft: rgba(63, 67, 75, 0.10);
+    --shadow: 0 1px 2px rgba(20, 22, 26, .06), 0 12px 32px rgba(20, 22, 26, .10);
+    --radius: 14px;
+    --maxw: 760px;
+  }
+
+  @supports (color: AccentColor) {
+    :root {
+      --accent: AccentColor;
+      --on-accent: AccentColorText;
+      --accent-soft: color-mix(in srgb, AccentColor 14%, transparent);
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161719;
+      --surface: #1C1E21;
+      --surface-2: #212428;
+      --border: #2B2E34;
+      --border-strong: #3A3E45;
+      --text: #ECEDEF;
+      --muted: #9BA0A8;
+      --faint: #757A83;
+      --accent: #7E8590;
+      --accent-soft: rgba(126, 133, 144, 0.16);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 16px 40px rgba(0, 0, 0, .5);
+    }
+    @supports (color: AccentColor) {
+      :root {
+        --accent: AccentColor;
+        --on-accent: AccentColorText;
+        --accent-soft: color-mix(in srgb, AccentColor 22%, transparent);
+      }
+    }
+  }
+
+  :root[data-theme="light"] {
+    --bg: #FCFCFD; --surface: #FFFFFF; --surface-2: #F3F4F6;
+    --border: #E4E6EB; --border-strong: #D3D6DD;
+    --text: #1B1D22; --muted: #656A73; --faint: #8A8F98;
+    --accent: #3F434B; --on-accent: #FFFFFF; --accent-soft: rgba(63,67,75,.10);
+    --shadow: 0 1px 2px rgba(20,22,26,.06), 0 12px 32px rgba(20,22,26,.10);
+  }
+  :root[data-theme="light"] { }
+  @supports (color: AccentColor) {
+    :root[data-theme="light"] { --accent: AccentColor; --on-accent: AccentColorText; --accent-soft: color-mix(in srgb, AccentColor 14%, transparent); }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161719; --surface: #1C1E21; --surface-2: #212428;
+    --border: #2B2E34; --border-strong: #3A3E45;
+    --text: #ECEDEF; --muted: #9BA0A8; --faint: #757A83;
+    --accent: #7E8590; --on-accent: #FFFFFF; --accent-soft: rgba(126,133,144,.16);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.5);
+  }
+  @supports (color: AccentColor) {
+    :root[data-theme="dark"] { --accent: AccentColor; --on-accent: AccentColorText; --accent-soft: color-mix(in srgb, AccentColor 22%, transparent); }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    font-size: .92em;
+    letter-spacing: -0.01em;
+  }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  /* ---------- header ---------- */
+  header.hero { text-align: center; padding: 88px 0 20px; }
+
+  .appicon {
+    width: 84px; height: 84px; border-radius: 19px;
+    display: block; margin: 0 auto 22px;
+    box-shadow: 0 2px 6px rgba(20,22,26,.14), 0 10px 30px rgba(20,22,26,.12);
+  }
+
+  h1 {
+    font-size: clamp(2.1rem, 5.5vw, 3.05rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 680;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+
+  .tagline {
+    font-size: clamp(1.05rem, 2.4vw, 1.24rem);
+    color: var(--muted);
+    max-width: 34ch;
+    margin: 0 auto 30px;
+    text-wrap: balance;
+  }
+
+  .cta-row { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  .download {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: #3F434B;          /* fallback first */
+    background: var(--accent);
+    color: #FFFFFF;
+    color: var(--on-accent);
+    font-size: 1.02rem;
+    font-weight: 590;
+    padding: 13px 26px;
+    border-radius: 11px;
+    box-shadow: var(--shadow);
+    transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+  }
+  .download:hover { text-decoration: none; transform: translateY(-1px); filter: brightness(1.05); }
+  .download:active { transform: translateY(0); }
+  .download svg { width: 17px; height: 17px; }
+
+  .requirements { color: var(--faint); font-size: .9rem; margin: 0; }
+  .requirements .sep { opacity: .5; margin: 0 8px; }
+
+  /* ---------- menu motif ---------- */
+  .stage { display: flex; justify-content: center; padding: 46px 0 8px; }
+
+  .menu {
+    width: 268px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 7px;
+    font-size: .9rem;
+    user-select: none;
+  }
+  .menu-title {
+    font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--faint); padding: 6px 10px 8px;
+  }
+  .row {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 7px; color: var(--text);
+  }
+  .row .tick { width: 15px; text-align: center; color: var(--accent); font-weight: 700; opacity: 0; }
+  .row.active { background: var(--accent-soft); }
+  .row.active .tick { opacity: 1; }
+  .row.active .name { font-weight: 600; }
+  .row .badge {
+    margin-left: auto; font-size: .72rem; color: var(--faint);
+  }
+  .row.cmd { color: var(--muted); }
+  .row.cmd .tick { visibility: hidden; }
+  .menu-sep { height: 1px; background: var(--border); margin: 6px 8px; }
+  .stage-note { text-align: center; color: var(--faint); font-size: .82rem; margin: 16px auto 0; max-width: 40ch; }
+
+  /* ---------- sections ---------- */
+  section { padding: 60px 0; }
+  h2 {
+    font-size: clamp(1.35rem, 3vw, 1.7rem);
+    letter-spacing: -0.02em; font-weight: 660;
+    margin: 0 0 6px; text-wrap: balance;
+  }
+  .section-lede { color: var(--muted); margin: 0 0 30px; max-width: 52ch; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(228px, 1fr)); gap: 14px; }
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 20px 22px;
+    transition: border-color .16s ease, transform .16s ease;
+  }
+  .feature:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+  .feature .k {
+    font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+    color: var(--accent); margin: 0 0 9px;
+  }
+  .feature h3 { font-size: 1.02rem; font-weight: 620; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .feature p { color: var(--muted); font-size: .93rem; margin: 0; }
+
+  /* ---------- install stepper ---------- */
+  .install { border-top: 1px solid var(--border); }
+  ol.steps { list-style: none; counter-reset: step; margin: 0; padding: 0; }
+  ol.steps li { position: relative; padding: 0 0 26px 52px; }
+  ol.steps li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 0; top: -2px;
+    width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); font-weight: 620; font-size: .92rem;
+    font-variant-numeric: tabular-nums;
+  }
+  ol.steps li:not(:last-child)::after {
+    content: ""; position: absolute; left: 16.5px; top: 34px; bottom: 6px;
+    width: 1px; background: var(--border);
+  }
+  ol.steps li h3 { font-size: 1rem; font-weight: 600; margin: 4px 0 4px; }
+  ol.steps li p { color: var(--muted); font-size: .93rem; margin: 0; }
+  .kbd {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .84em;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1px 6px; color: var(--text);
+  }
+  .safety {
+    margin-top: 14px; padding: 16px 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--muted); font-size: .9rem;
+  }
+  .safety strong { color: var(--text); font-weight: 620; }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--border); padding: 40px 0 64px; text-align: center; }
+  footer .links { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  footer .fine { color: var(--faint); font-size: .84rem; margin: 0; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
+  .rise.d1 { animation-delay: .05s; }
+  .rise.d2 { animation-delay: .12s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise { animation: none; }
+    .download, .feature { transition: none; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <img class="appicon rise" src="assets/icon.png" alt="Hosts Switchr app icon" width="84" height="84">
+    <h1 class="rise d1">Hosts Switchr</h1>
+    <p class="tagline rise d1">Switch your <span class="mono">/etc/hosts</span> with a click — profiles, blocklists, and reusable fragments, right from the menu bar.</p>
+    <div class="cta-row rise d2">
+      <a class="download" id="download" href="https://github.com/thomasguillot/hosts-switchr/releases/latest">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1a.75.75 0 0 1 .75.75v7.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V1.75A.75.75 0 0 1 8 1Z"/><path d="M2.75 12a.75.75 0 0 1 .75.75v.75c0 .414.336.75.75.75h7.5a.75.75 0 0 0 .75-.75v-.75a.75.75 0 0 1 1.5 0v.75A2.25 2.25 0 0 1 12.5 15.75h-9A2.25 2.25 0 0 1 1.25 13.5v-.75A.75.75 0 0 1 2 12Z"/></svg>
+        Download for macOS
+      </a>
+      <p class="requirements mono">v<span id="version">0.2.3</span><span class="sep">·</span>macOS 26 (Tahoe)+<span class="sep">·</span>Free &amp; open-source</p>
+    </div>
+  </div>
+</header>
+
+<div class="stage">
+  <div class="menu rise d2" role="img" aria-label="Menu-bar dropdown showing profiles with the active one checked, then Refresh, Open, and Settings commands.">
+    <div class="menu-title">Hosts Switchr</div>
+    <div class="row active"><span class="tick">✓</span><span class="name">Personal</span></div>
+    <div class="row"><span class="tick">✓</span><span class="name">Development</span></div>
+    <div class="row"><span class="tick">✓</span><span class="name">Block Distractions</span><span class="badge mono">↻</span></div>
+    <div class="menu-sep"></div>
+    <div class="row cmd"><span class="tick">✓</span>Refresh All Sources</div>
+    <div class="row cmd"><span class="tick">✓</span>Open Hosts Switchr…</div>
+    <div class="row cmd"><span class="tick">✓</span>Settings…</div>
+  </div>
+</div>
+<p class="stage-note wrap">Grey by design. The tick, highlight, and download button borrow your Mac's own accent color.</p>
+
+<section>
+  <div class="wrap">
+    <h2>Everything lives in the menu bar</h2>
+    <p class="section-lede">A profile is a named <span class="mono">/etc/hosts</span>. Build a few, switch between them instantly, and layer on blocklists and snippets as you need them.</p>
+    <div class="features">
+      <div class="feature">
+        <p class="k mono">profiles</p>
+        <h3>Switchable profiles</h3>
+        <p>Create named <span class="mono">/etc/hosts</span> setups and flip between them from the menu bar. The active one is a single click away.</p>
+      </div>
+      <div class="feature">
+        <p class="k mono">sources</p>
+        <h3>Blocklist subscriptions</h3>
+        <p>Subscribe to hosts-format lists — StevenBlack, HaGeZi, or your own URL. They refresh in the background with ETag caching.</p>
+      </div>
+      <div class="feature">
+        <p class="k mono">fragments</p>
+        <h3>Reusable fragments</h3>
+        <p>Toggle a snippet — like your Docker container hostnames — into any profile. Edit freely; re-apply once when you're ready.</p>
+      </div>
+      <div class="feature">
+        <p class="k mono">apply</p>
+        <h3>Stale-aware apply</h3>
+        <p>A "needs re-apply" badge appears when your edits drift from what's live. Cancel reverts cleanly to the applied state.</p>
+      </div>
+      <div class="feature">
+        <p class="k mono">backup</p>
+        <h3>Import &amp; export</h3>
+        <p>Back up your whole setup to JSON, restore it on another Mac, or import a plain hosts file as a profile or fragment.</p>
+      </div>
+      <div class="feature">
+        <p class="k mono">updates</p>
+        <h3>Quiet &amp; self-updating</h3>
+        <p>Runs menu-bar-only, no Dock icon. New versions install themselves in place from GitHub — no quitting, no drag-and-drop.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="install">
+  <div class="wrap">
+    <h2>Installing an unsigned app</h2>
+    <p class="section-lede">Hosts Switchr uses no Apple Developer Program, so macOS asks you to approve it once. Here's the whole dance.</p>
+    <ol class="steps">
+      <li>
+        <h3>Open the app</h3>
+        <p>Double-click <strong>Hosts Switchr</strong>. When macOS says it "can't verify the developer," click <span class="kbd">Done</span> — not "Move to Trash."</p>
+      </li>
+      <li>
+        <h3>Allow it in Settings</h3>
+        <p>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to Security, and click <span class="kbd">Open Anyway</span>.</p>
+      </li>
+      <li>
+        <h3>Confirm</h3>
+        <p>Authenticate and click <span class="kbd">Open</span>. macOS only asks once — after that it launches normally.</p>
+      </li>
+    </ol>
+    <p class="safety"><strong>Your machine stays in your hands.</strong> <span class="mono">/etc/hosts</span> only ever changes when you click <strong>Apply</strong>, via one admin-password prompt. No signing, no background helper daemon, no Developer Program.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://github.com/thomasguillot/hosts-switchr">GitHub</a>
+      <a href="https://github.com/thomasguillot/hosts-switchr/releases">Releases</a>
+      <a href="https://github.com/thomasguillot/hosts-switchr/issues">Report an issue</a>
+    </div>
+    <p class="fine">Native macOS · Swift &amp; SwiftUI · MIT-licensed</p>
+  </div>
+</footer>
+
+<script>
+  // Point the button at the actual latest .dmg and sync the version string.
+  fetch("https://api.github.com/repos/thomasguillot/hosts-switchr/releases/latest")
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+    .then(function (rel) {
+      var dmg = (rel.assets || []).find(function (a) { return a.name.endsWith(".dmg"); });
+      if (dmg) document.getElementById("download").href = dmg.browser_download_url;
+      if (rel.tag_name) document.getElementById("version").textContent = rel.tag_name.replace(/^v/, "");
+    })
+    .catch(function () { /* static fallback in the markup already works */ });
+</script>
+</body>
+</html>
