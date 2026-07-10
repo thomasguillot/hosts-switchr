@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 
 /// Allows a redirect only when its target stays https; a non-https redirect is cancelled and recorded.
 private final class DownloadRedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
@@ -147,7 +146,7 @@ private final class DownloadBodyDelegate: NSObject, URLSessionDataDelegate, @unc
 
 struct UpdateDownloader: Sendable {
     enum DownloadError: Error {
-        case insecureURL, insecureRedirect, badStatus(Int), tooLarge, writeFailed, openFailed
+        case insecureURL, insecureRedirect, badStatus(Int), tooLarge, writeFailed
         case sizeMismatch, unexpectedContentType
     }
 
@@ -161,7 +160,10 @@ struct UpdateDownloader: Sendable {
         self.fileManager = fileManager
     }
 
-    func downloadAndOpen(dmgURL: URL, suggestedName: String, expectedSize: Int) async throws -> URL {
+    /// Streams the verified `.dmg` to a unique temp file and returns its path.
+    /// The caller (UpdateInstaller) mounts and installs from it. Every https,
+    /// size, and content-type guard runs before any byte is written.
+    func downloadToTemp(dmgURL: URL, expectedSize: Int) async throws -> URL {
         // Fail closed: never download over a non-https URL.
         guard dmgURL.scheme?.lowercased() == "https" else { throw DownloadError.insecureURL }
         // Reject the advertised size before issuing any network request.
@@ -195,23 +197,14 @@ struct UpdateDownloader: Sendable {
             if redirectGuard.blockedInsecureRedirect { throw DownloadError.insecureRedirect }
             throw error
         }
-        // Even if the delegate finished before cancellation propagated, refuse to move or open.
+        // Even if the delegate finished before cancellation propagated, refuse to install.
         if Task.isCancelled { try? fileManager.removeItem(at: tempURL); throw CancellationError() }
         if redirectGuard.blockedInsecureRedirect {
             try? fileManager.removeItem(at: tempURL)
             throw DownloadError.insecureRedirect
         }
 
-        let destination = try uniqueDestination(for: sanitize(suggestedName))
-        do {
-            try fileManager.moveItem(at: tempURL, to: destination)
-        } catch {
-            try? fileManager.removeItem(at: tempURL)
-            throw DownloadError.writeFailed
-        }
-
-        guard NSWorkspace.shared.open(destination) else { throw DownloadError.openFailed }
-        return destination
+        return tempURL
     }
 
     private func makeWritableTempFile(at url: URL) throws -> FileHandle {
@@ -224,33 +217,5 @@ struct UpdateDownloader: Sendable {
             try? fileManager.removeItem(at: url)
             throw error
         }
-    }
-
-    private func sanitize(_ name: String) -> String {
-        let base = (name as NSString).lastPathComponent
-        let cleaned = base.replacingOccurrences(of: "/", with: "-")
-        let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fallback = trimmed.isEmpty ? "HostsSwitchr.dmg" : trimmed
-        return fallback.lowercased().hasSuffix(".dmg") ? fallback : fallback + ".dmg"
-    }
-
-    private func uniqueDestination(for name: String) throws -> URL {
-        let directory: URL
-        if let downloads = try? fileManager.url(
-            for: .downloadsDirectory, in: .userDomainMask, appropriateFor: nil, create: true) {
-            directory = downloads
-        } else {
-            directory = fileManager.temporaryDirectory
-        }
-
-        let ext = (name as NSString).pathExtension
-        let stem = (name as NSString).deletingPathExtension
-        var candidate = directory.appendingPathComponent(name)
-        var index = 1
-        while fileManager.fileExists(atPath: candidate.path) {
-            candidate = directory.appendingPathComponent("\(stem) (\(index)).\(ext)")
-            index += 1
-        }
-        return candidate
     }
 }

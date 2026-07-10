@@ -20,14 +20,17 @@ final class UpdateController {
     private let currentVersion: AppVersion?
     private let fetcher: ReleaseFetcher
     private let downloader: UpdateDownloader
+    private let installer: UpdateInstaller
 
     init(
         fetcher: ReleaseFetcher = ReleaseFetcher(),
         downloader: UpdateDownloader = UpdateDownloader(),
+        installer: UpdateInstaller = UpdateInstaller(),
         bundleVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     ) {
         self.fetcher = fetcher
         self.downloader = downloader
+        self.installer = installer
         self.currentVersion = bundleVersion.flatMap(AppVersion.init)
     }
 
@@ -60,13 +63,13 @@ final class UpdateController {
         }
     }
 
-    func downloadAndOpen() async {
+    func downloadAndInstall() async {
         guard case let .available(version, dmgURL, size) = state else { return }
         state = .downloading
         do {
-            _ = try await downloader.downloadAndOpen(
-                dmgURL: dmgURL, suggestedName: "HostsSwitchr-\(version).dmg", expectedSize: size)
-            showPostInstallHint()
+            let dmg = try await downloader.downloadToTemp(dmgURL: dmgURL, expectedSize: size)
+            let installedPath = try installer.install(dmgAt: dmg)
+            confirmAndRelaunch(version: version, path: installedPath)
             state = .idle
         } catch {
             state = .failed(error.localizedDescription)
@@ -101,7 +104,7 @@ final class UpdateController {
         alert.addButton(withTitle: "Download & Install")
         alert.addButton(withTitle: "Later")
         if alert.runModal() == .alertFirstButtonReturn {
-            Task { await downloadAndOpen() }
+            Task { await downloadAndInstall() }
         }
     }
 
@@ -115,20 +118,18 @@ final class UpdateController {
         alert.runModal()
     }
 
-    private func showPostInstallHint() {
+    private func confirmAndRelaunch(version: String, path: String) {
         activate()
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "Update downloaded"
+        alert.messageText = "Update installed"
         alert.informativeText =
-            "The disk image is open in Finder. To finish updating: quit Hosts Switchr first, "
-            + "then drag it onto your Applications folder to replace this version, then reopen it."
-            + "\n\nQuitting before you drag avoids a \u{201C}Hosts Switchr is in use\u{201D} error."
-        alert.addButton(withTitle: "Quit Now")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-            // applicationWillTerminate flushes any pending save before exit.
-            NSApplication.shared.terminate(nil)
-        }
+            "Hosts Switchr \(version) is installed in your Applications folder. "
+            + "It will relaunch now to finish updating."
+        alert.addButton(withTitle: "Relaunch")
+        // relaunch() terminates this instance; applicationWillTerminate flushes
+        // any pending save first, and the spawned script reopens the new copy.
+        alert.runModal()
+        installer.relaunch(path: path)
     }
 }
