@@ -163,48 +163,18 @@
   /* Breaks out wider than the 760px text column (like the Newspack Shots
      site). It sits directly in <body>, so a plain max-width + auto margins
      centers it — no negative-margin trick needed. */
-  @property --shot-angle {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
   .shot {
     --shot-w: min(868px, calc(100vw - 40px));
-    position: relative;
     width: var(--shot-w);
     margin: 40px auto 8px;
-    padding: 2px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 27px;
+    overflow: hidden;
     box-shadow: 0 2px 8px rgba(20, 22, 26, .10), 0 34px 70px rgba(20, 22, 26, .18);
   }
   @media (prefers-color-scheme: dark) {
     .shot { box-shadow: 0 2px 8px rgba(0, 0, 0, .5), 0 34px 70px rgba(0, 0, 0, .6); }
   }
-  /* Rotating light: a conic gradient masked to the 2px border ring, so a
-     bright arc of the OS accent sweeps around the frame. */
-  .shot::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 18px;
-    padding: 2px;
-    background: conic-gradient(from var(--shot-angle),
-      transparent 0 70%,
-      color-mix(in srgb, var(--accent) 55%, transparent) 82%,
-      color-mix(in srgb, white 60%, var(--accent)) 90%,
-      color-mix(in srgb, var(--accent) 55%, transparent) 98%,
-      transparent 100%);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    animation: shot-light 6s linear infinite;
-    pointer-events: none;
-  }
-  @keyframes shot-light { to { --shot-angle: 360deg; } }
-  .shot img { display: block; width: 100%; height: auto; border-radius: 14px; }
+  .shot img { display: block; width: 100%; height: auto; }
 
   /* ---------- sections ---------- */
   section { padding: 60px 0; }
@@ -277,7 +247,6 @@
   @media (prefers-reduced-motion: reduce) {
     .rise { animation: none; }
     .download, .feature { transition: none; }
-    .shot::before { animation: none; }
   }
 </style>
 </head>
