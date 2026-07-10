@@ -159,6 +159,25 @@
   .requirements { color: var(--faint); font-size: .9rem; margin: 0; }
   .requirements .sep { opacity: .5; margin: 0 8px; }
 
+  /* ---------- hero shot ---------- */
+  /* Breaks out wider than the 760px text column (like the Newspack Shots
+     site). It sits directly in <body>, so a plain max-width + auto margins
+     centers it — no negative-margin trick needed. */
+  .shot {
+    --shot-w: min(1120px, calc(100vw - 40px));
+    width: var(--shot-w);
+    margin: 40px auto 8px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(20, 22, 26, .10), 0 34px 70px rgba(20, 22, 26, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    .shot { box-shadow: 0 2px 8px rgba(0, 0, 0, .5), 0 34px 70px rgba(0, 0, 0, .6); }
+  }
+  .shot img { display: block; width: 100%; height: auto; }
+
   /* ---------- sections ---------- */
   section { padding: 60px 0; }
   h2 {
@@ -248,6 +267,10 @@
     </div>
   </div>
 </header>
+
+<div class="shot rise d2">
+  <img src="assets/hero.png" alt="Hosts Switchr's main window — profiles in the sidebar, sources and fragments, and the editor." width="1736" height="1034" loading="lazy">
+</div>
 
 <section>
   <div class="wrap">
