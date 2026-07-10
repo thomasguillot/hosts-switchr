@@ -18,7 +18,7 @@ A native macOS menu-bar app for managing `/etc/hosts` through switchable profile
 - **Stale-aware apply** — profiles, fragments, and sources show a "needs re-apply" badge when your edits differ from what's live in `/etc/hosts`, and each editor has **Cancel** to revert unapplied changes back to the applied state.
 - **Drag-to-reorder** — reorder profiles, sources, and fragments directly in the sidebars.
 - **Import / export** — back up your whole setup to a JSON file, restore it on another machine, or import a plain hosts file as a profile or fragment.
-- **Launch at login & updates** — runs quietly as a menu-bar-only app (no Dock icon), can optionally show the active profile name next to the menu-bar icon, and checks GitHub Releases for new versions.
+- **Launch at login & updates** — runs quietly as a menu-bar-only app (no Dock icon), can optionally show the active profile name next to the menu-bar icon, and checks GitHub Releases for new versions — installing them in place and relaunching, no drag-and-drop.
 
 ### Install
 
