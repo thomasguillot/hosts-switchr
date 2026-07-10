@@ -31,9 +31,9 @@ struct MenuBarView: View {
         } label: {
             Label("Open Hosts Switchr\u{2026}", systemImage: "macwindow")
         }
-        SettingsLink { Label("Settings\u{2026}", systemImage: "gearshape") }
         updateItem
         Divider()
+        SettingsLink { Label("Settings\u{2026}", systemImage: "gearshape") }
         Button {
             model.flushPendingSave()
             NSApplication.shared.terminate(nil)
