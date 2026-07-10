@@ -20,15 +20,26 @@ struct MenuBarView: View {
             }
         }
         Divider()
-        Button("Refresh All Sources") { Task { await model.refreshAllSources() } }
-        Button("Open Hosts Switchr\u{2026}") {
+        Button {
+            Task { await model.refreshAllSources() }
+        } label: {
+            Label("Refresh All Sources", systemImage: "arrow.clockwise")
+        }
+        Button {
             NSApplication.shared.activate(ignoringOtherApps: true)
             openWindow(id: "main")
+        } label: {
+            Label("Open Hosts Switchr\u{2026}", systemImage: "macwindow")
         }
-        SettingsLink { Text("Settings\u{2026}") }
+        SettingsLink { Label("Settings\u{2026}", systemImage: "gearshape") }
         updateItem
         Divider()
-        Button("Quit") { model.flushPendingSave(); NSApplication.shared.terminate(nil) }
+        Button {
+            model.flushPendingSave()
+            NSApplication.shared.terminate(nil)
+        } label: {
+            Label("Quit", systemImage: "xmark.rectangle")
+        }
     }
 
     @ViewBuilder
@@ -36,17 +47,21 @@ struct MenuBarView: View {
         switch update.state {
         case let .available(version, _, _):
             Button {
-                Task { await update.downloadAndOpen() }
+                Task { await update.downloadAndInstall() }
             } label: {
                 Label("Update to v\(version)\u{2026}", systemImage: "arrow.down.circle.fill")
             }
         case .checking:
-            Button("Checking for Updates\u{2026}") {}.disabled(true)
+            Button {} label: { Label("Checking for Updates\u{2026}", systemImage: "arrow.down.circle") }
+                .disabled(true)
         case .downloading:
-            Button("Downloading Update\u{2026}") {}.disabled(true)
+            Button {} label: { Label("Downloading Update\u{2026}", systemImage: "arrow.down.circle") }
+                .disabled(true)
         default:
-            Button("Check for Updates\u{2026}") {
+            Button {
                 Task { await update.checkNow(userInitiated: true) }
+            } label: {
+                Label("Check for Updates\u{2026}", systemImage: "arrow.down.circle")
             }
         }
     }
