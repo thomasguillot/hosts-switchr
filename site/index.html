@@ -185,6 +185,10 @@
   }
   .shot img { display: block; width: 100%; height: auto; }
   .shot-reveal { animation: shot-settle 1s var(--ease) .18s both; }
+  .demo-hint {
+    text-align: center; color: var(--faint); font-size: .82rem;
+    margin: 16px auto 0; padding: 0 24px;
+  }
 
   /* ---------- interactive hero window ---------- */
   /* Fixed 868x540 design space; JS scales it to the container width so
@@ -198,7 +202,7 @@
     font-size: 13px; line-height: 1.45; text-align: left;
   }
   .win, .win * { user-select: none; }
-  .win button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: default; }
+  .win button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
 
   .win-rail { background: var(--surface-2); border-right: 1px solid var(--border); padding: 14px 12px; }
   .win-rail .tl { display: flex; gap: 8px; padding: 4px 2px 22px; }
@@ -229,7 +233,7 @@
   }
   .p-row.active .pcheck { opacity: 1; }
   .p-row .plock { width: 11px; height: 11px; flex: none; margin-left: auto; color: var(--faint); }
-  .p-row:hover:not(.sel) { background: var(--surface-2); }
+  .p-row:hover:not(.sel), .win .p-row.invite:not(.sel) { background: var(--surface-2); }
   .p-row.sel { background: var(--accent); color: var(--on-accent); }
   .p-row.sel .plock { color: var(--on-accent); opacity: .8; }
   .win .s-row { flex-direction: column; align-items: flex-start; }
@@ -290,6 +294,7 @@
   .win .apply:hover { filter: brightness(1.06); }
   .win .apply.pressed { filter: brightness(.82); transform: scale(.97); }
   .win .add-profile:hover, .win .share:hover { background: var(--border); }
+  .win .add-profile.pressed, .win .share.pressed { background: var(--border-strong); }
   .pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .btn-row { display: flex; gap: 8px; }
   .win .ghost {
@@ -333,6 +338,7 @@
       var(--surface-2);
     user-select: none;
   }
+  .mbdemo button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
   .mb-bar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 6px 12px;
@@ -345,9 +351,9 @@
   .mb-left .app { font-weight: 640; color: var(--text); }
   .mb-right { display: flex; align-items: center; gap: 11px; color: var(--text); }
   .mb-right svg { width: 16px; height: 16px; display: block; }
-  .mb-status { padding: 3px 5px; margin: -3px 0; border-radius: 6px; transition: background .12s ease; }
-  .mb-status:hover { background: var(--surface-2); }
-  .mb-status.pressed { background: var(--border); }
+  .mbdemo .mb-status { padding: 3px 5px; margin: -3px 0; border-radius: 6px; transition: background .12s ease; }
+  .mbdemo .mb-status:hover { background: var(--surface-2); }
+  .mbdemo .mb-status.pressed { background: var(--border); }
   .mb-clock { color: var(--muted); font-variant-numeric: tabular-nums; }
   .mb-desktop { display: flex; justify-content: flex-end; padding: 8px 10px 20px; }
   .mb-menu {
@@ -360,7 +366,7 @@
     font-size: .86rem;
     line-height: 1.5;
   }
-  .mb-item { position: relative; padding: 4px 10px 4px 30px; border-radius: 7px; color: var(--text); }
+  .mbdemo .mb-item { position: relative; width: 100%; padding: 4px 10px 4px 30px; border-radius: 7px; color: var(--text); }
   .mb-item .ic, .mb-item .chk {
     position: absolute; left: 9px; top: 50%; translate: 0 -50%;
     width: 13px; height: 13px;
@@ -501,7 +507,7 @@
 </header>
 
 <div class="shot shot-reveal hero-app">
-  <div class="win" id="heroWin" aria-label="Interactive demo of the Hosts Switchr main window">
+  <div class="win" id="heroWin" role="group" aria-label="Interactive demo of the Hosts Switchr main window">
     <div class="win-rail">
       <div class="tl" aria-hidden="true"><span class="r"></span><span class="y"></span><span class="g"></span></div>
       <button class="rail-item sel" data-view="profiles" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Profiles</button>
@@ -592,32 +598,33 @@
     </div>
   </div>
 </div>
+<p class="demo-hint mono">Not a screenshot — click around. Nothing here touches your real hosts file.</p>
 
 <section>
   <div class="wrap">
     <h2 class="reveal">Everything lives in the menu bar</h2>
     <p class="section-lede reveal">A profile is a named <span class="mono">/etc/hosts</span>. Build a few, switch between them instantly, and layer on blocklists and snippets as you need them. Coming from Gas Mask? Same idea, rebuilt natively for modern macOS.</p>
-    <div class="mbdemo reveal" aria-hidden="true">
+    <div class="mbdemo reveal" role="group" aria-label="Interactive demo of the Hosts Switchr menu bar item">
       <div class="mb-bar">
-        <div class="mb-left"><span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span><span>Go</span></div>
+        <div class="mb-left" aria-hidden="true"><span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span><span>Go</span></div>
         <div class="mb-right">
-          <span class="mb-status"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 5.75C4.75 5.19772 5.19772 4.75 5.75 4.75H18.25C18.8023 4.75 19.25 5.19772 19.25 5.75V9.25C19.25 9.80228 18.8023 10.25 18.25 10.25H5.75C5.19771 10.25 4.75 9.80228 4.75 9.25V5.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 14.75C4.75 14.1977 5.19772 13.75 5.75 13.75H18.25C18.8023 13.75 19.25 14.1977 19.25 14.75V18.25C19.25 18.8023 18.8023 19.25 18.25 19.25H5.75C5.19771 19.25 4.75 18.8023 4.75 18.25V14.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 5V10"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 14V19"/></svg></span>
-          <span class="mb-clock">Wed 9:41</span>
+          <button class="mb-status" type="button" aria-expanded="true" aria-label="Hosts Switchr menu"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 5.75C4.75 5.19772 5.19772 4.75 5.75 4.75H18.25C18.8023 4.75 19.25 5.19772 19.25 5.75V9.25C19.25 9.80228 18.8023 10.25 18.25 10.25H5.75C5.19771 10.25 4.75 9.80228 4.75 9.25V5.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 14.75C4.75 14.1977 5.19772 13.75 5.75 13.75H18.25C18.8023 13.75 19.25 14.1977 19.25 14.75V18.25C19.25 18.8023 18.8023 19.25 18.25 19.25H5.75C5.19771 19.25 4.75 18.8023 4.75 18.25V14.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 5V10"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 14V19"/></svg></button>
+          <span class="mb-clock" aria-hidden="true">Wed 9:41</span>
         </div>
       </div>
       <div class="mb-desktop">
         <div class="mb-menu">
-          <div class="mb-item" data-profile="System Default">System Default<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></div>
-          <div class="mb-item on" data-profile="Dev">Dev<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></div>
-          <div class="mb-item" data-profile="Staging">Staging<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></div>
-          <div class="mb-item" data-profile="Blocklists">Blocklists<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></div>
+          <button class="mb-item" data-profile="System Default" type="button" aria-pressed="false">System Default<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></button>
+          <button class="mb-item on" data-profile="Dev" type="button" aria-pressed="true">Dev<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></button>
+          <button class="mb-item" data-profile="Staging" type="button" aria-pressed="false">Staging<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></button>
+          <button class="mb-item" data-profile="Blocklists" type="button" aria-pressed="false">Blocklists<svg class="chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg></button>
           <div class="mb-sep"></div>
-          <div class="mb-item">Refresh All Sources<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></div>
-          <div class="mb-item">Open Hosts Switchr…<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div>
-          <div class="mb-item">Check for Updates…<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="m8.5 12.5 3.5 3.5 3.5-3.5"/></svg></div>
+          <button class="mb-item" type="button">Refresh All Sources<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+          <button class="mb-item" type="button">Open Hosts Switchr…<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></button>
+          <button class="mb-item" type="button">Check for Updates…<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="m8.5 12.5 3.5 3.5 3.5-3.5"/></svg></button>
           <div class="mb-sep"></div>
-          <div class="mb-item">Settings…<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></div>
-          <div class="mb-item">Quit<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9.5 9.5 5 5"/><path d="m14.5 9.5-5 5"/></svg></div>
+          <button class="mb-item" type="button">Settings…<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button class="mb-item" type="button">Quit<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9.5 9.5 5 5"/><path d="m14.5 9.5-5 5"/></svg></button>
         </div>
       </div>
     </div>
@@ -739,6 +746,7 @@
     function setOpen(open) {
       menu.classList.toggle("open", open);
       status.classList.toggle("pressed", open);
+      status.setAttribute("aria-expanded", open ? "true" : "false");
     }
     setOpen(true);
 
@@ -760,8 +768,10 @@
     profiles.forEach(function (row) {
       row.addEventListener("click", function () {
         pick(row, function () {
-          profiles.forEach(function (el) { el.classList.remove("on"); });
-          row.classList.add("on");
+          profiles.forEach(function (el) {
+            el.classList.toggle("on", el === row);
+            el.setAttribute("aria-pressed", el === row ? "true" : "false");
+          });
         });
       });
     });
@@ -839,6 +849,32 @@
       });
     });
     applyBtn.addEventListener("click", function () { applyTo(current); });
+    [].slice.call(win.querySelectorAll(".share, .add-profile")).forEach(function (b) {
+      b.addEventListener("click", function () { press(b); });
+    });
+
+    // One-time invitation beat: when the window first enters view, blink the
+    // hover tint on a row so visitors learn the demo is alive, then go still.
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches &&
+        "IntersectionObserver" in window && !sessionStorage.getItem("hsk-invited")) {
+      var invited = false, touched = false;
+      win.addEventListener("pointerdown", function () { touched = true; }, { once: true });
+      var inviteIO = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting || invited) return;
+          invited = true;
+          inviteIO.disconnect();
+          try { sessionStorage.setItem("hsk-invited", "1"); } catch (err) {}
+          if (touched) return;
+          var row = win.querySelector('.p-row[data-p="staging"]');
+          setTimeout(function () { if (!touched) row.classList.add("invite"); }, 500);
+          setTimeout(function () { row.classList.remove("invite"); }, 900);
+          setTimeout(function () { if (!touched) row.classList.add("invite"); }, 1050);
+          setTimeout(function () { row.classList.remove("invite"); }, 1450);
+        });
+      }, { threshold: 0.7 });
+      inviteIO.observe(win);
+    }
 
     // Rail navigation: Fragments and Sources views, mirroring the app.
     var cols = { profiles: "colProfiles", fragments: "colFragments", sources: "colSources" };
