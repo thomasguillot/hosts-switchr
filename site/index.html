@@ -204,26 +204,40 @@
   .win-rail .tl { display: flex; gap: 8px; padding: 4px 2px 22px; }
   .win-rail .tl span { width: 12px; height: 12px; border-radius: 50%; }
   .win-rail .tl .r { background: #FF5F57; } .win-rail .tl .y { background: #FEBC2E; } .win-rail .tl .g { background: #28C840; }
-  .rail-item {
-    display: flex; align-items: center; gap: 8px;
+  .win .rail-item {
+    display: flex; align-items: center; gap: 8px; width: 100%;
     padding: 6px 10px; border-radius: 8px; margin-bottom: 2px;
     font-weight: 500; color: var(--text);
   }
-  .rail-item svg { width: 16px; height: 16px; flex: none; }
-  .rail-item.sel { background: var(--accent); color: var(--on-accent); }
+  .win .rail-item svg { width: 16px; height: 16px; flex: none; }
+  .win .rail-item:hover:not(.sel) { background: var(--border); }
+  .win .rail-item.sel { background: var(--accent); color: var(--on-accent); }
 
   .win-list { background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; }
   .win-list .list-title { font-size: 15px; font-weight: 700; padding: 0 4px 14px; }
-  .p-row {
-    display: flex; align-items: center; gap: 7px; width: 100%;
-    padding: 5px 9px 5px 8px; border-radius: 7px; margin-bottom: 1px;
+  /* Row metrics mirror the menu-bar vignette: same vertical rhythm, same
+     30px icon slot with the glyph parked at 9px. */
+  .win .p-row {
+    position: relative; display: flex; align-items: center; width: 100%;
+    padding: 4px 10px; font-size: 13.5px; line-height: 1.5;
+    border-radius: 7px; margin-bottom: 1px;
   }
-  .p-row .pcheck { width: 12px; height: 12px; flex: none; opacity: 0; transition: opacity .15s ease; }
+  .win .p-row[data-p] { padding-left: 30px; }
+  .p-row .pcheck {
+    position: absolute; left: 9px; top: 50%; translate: 0 -50%;
+    width: 12px; height: 12px; opacity: 0; transition: opacity .15s ease;
+  }
   .p-row.active .pcheck { opacity: 1; }
   .p-row .plock { width: 11px; height: 11px; flex: none; margin-left: auto; color: var(--faint); }
   .p-row:hover:not(.sel) { background: var(--surface-2); }
   .p-row.sel { background: var(--accent); color: var(--on-accent); }
   .p-row.sel .plock { color: var(--on-accent); opacity: .8; }
+  .s-row { flex-direction: column; align-items: flex-start; }
+  .s-row .s-sub { font-size: 11px; line-height: 1.35; color: var(--muted); }
+  .p-row.sel .s-sub { color: var(--on-accent); opacity: .85; }
+  .sec-label { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 10px 10px 4px; }
+  .col-view { display: flex; flex-direction: column; flex: 1; }
+  .hidden { display: none !important; }
   .win .add-profile {
     margin: 10px 0 0 8px; align-self: flex-start;
     padding: 4px 12px; border-radius: 7px; font-size: 12.5px;
@@ -276,6 +290,22 @@
   .win .apply:hover { filter: brightness(1.06); }
   .win .apply.pressed { filter: brightness(.82); transform: scale(.97); }
   .win .add-profile:hover, .win .share:hover { background: var(--border); }
+  .pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .btn-row { display: flex; gap: 8px; }
+  .win .ghost {
+    padding: 4px 14px; border-radius: 7px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    transition: background .15s ease, transform .15s ease;
+  }
+  .win .ghost:hover { background: var(--border); }
+  .win .ghost.pressed { background: var(--border-strong); transform: scale(.97); }
+  .src-detail { padding: 24px 26px; }
+  .src-detail h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+  .src-url {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; color: var(--muted); margin: 0 0 6px; overflow-wrap: anywhere;
+  }
+  .src-meta { font-size: 12px; color: var(--faint); margin: 0 0 18px; }
   @keyframes shot-settle {
     from { opacity: 0; transform: perspective(1400px) translateY(26px) rotateX(4deg) scale(.975); }
     to   { opacity: 1; transform: none; }
@@ -472,11 +502,12 @@
   <div class="win" id="heroWin" aria-label="Interactive demo of the Hosts Switchr main window">
     <div class="win-rail">
       <div class="tl" aria-hidden="true"><span class="r"></span><span class="y"></span><span class="g"></span></div>
-      <div class="rail-item sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Profiles</div>
-      <div class="rail-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>Fragments</div>
-      <div class="rail-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 15.5a5 5 0 0 1 0-7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.6 18.4a9 9 0 0 1 0-12.8"/><path d="M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>Sources</div>
+      <button class="rail-item sel" data-view="profiles" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Profiles</button>
+      <button class="rail-item" data-view="fragments" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>Fragments</button>
+      <button class="rail-item" data-view="sources" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 15.5a5 5 0 0 1 0-7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.6 18.4a9 9 0 0 1 0-12.8"/><path d="M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>Sources</button>
     </div>
     <div class="win-list">
+      <div class="col-view" id="colProfiles">
       <div class="list-title">Profiles</div>
       <button class="p-row" data-p="default" type="button">
         <svg class="pcheck" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg>
@@ -496,8 +527,26 @@
         Blocklists
       </button>
       <button class="add-profile" type="button">Add Profile</button>
+      </div>
+      <div class="col-view hidden" id="colFragments">
+        <div class="list-title">Fragments</div>
+        <button class="p-row f-row sel" data-f="docker" type="button">Docker</button>
+        <button class="p-row f-row" data-f="studio" type="button">Studio</button>
+        <button class="p-row f-row" data-f="sandbox" type="button">Sandbox</button>
+        <button class="add-profile" type="button">Add Fragment</button>
+      </div>
+      <div class="col-view hidden" id="colSources">
+        <div class="list-title">Sources</div>
+        <div class="sec-label">Built-in</div>
+        <button class="p-row s-row sel" data-s="sb" type="button"><span>StevenBlack Unified</span><span class="s-sub">Ads &amp; malware</span></button>
+        <button class="p-row s-row" data-s="hagezi" type="button"><span>HaGeZi Pro</span><span class="s-sub">Broad blocking</span></button>
+        <div class="sec-label">Your sources</div>
+        <button class="p-row s-row" data-s="team" type="button"><span>Team blocklist</span><span class="s-sub">example.com</span></button>
+        <button class="add-profile" type="button">Add Source</button>
+      </div>
     </div>
     <div class="win-main">
+      <div class="pane" id="paneProfile">
       <div class="main-top">
         <button class="share" type="button" aria-label="Share (demo)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m8 6.5 4-3.5 4 3.5"/><path d="M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg></button>
       </div>
@@ -522,6 +571,22 @@
         <h4>Sources</h4>
       </div>
       <div class="apply-bar"><button class="apply" id="applyBtn" type="button">Apply</button></div>
+      </div>
+      <div class="pane hidden" id="paneFragment">
+        <pre class="hosts" id="fragView" style="padding-top: 20px;"></pre>
+        <div class="apply-bar btn-row">
+          <button class="apply" id="saveBtn" type="button">Save</button>
+          <button class="ghost" id="cancelBtn" type="button">Cancel</button>
+        </div>
+      </div>
+      <div class="pane hidden" id="paneSource">
+        <div class="src-detail">
+          <h3 id="srcName">StevenBlack Unified</h3>
+          <p class="src-url" id="srcUrl">https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts</p>
+          <p class="src-meta" id="srcMeta">Refreshed 12 minutes ago · 141,118 entries</p>
+          <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -747,16 +812,21 @@
     };
 
     function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
-    function renderHosts(key, fade) {
-      var html = esc(BASE + P[key].extra).replace(/^#.*$/gm, function (m) {
+    function renderPre(el, text, fade) {
+      var html = esc(text).replace(/^#.*$/gm, function (m) {
         return '<span class="cmt">' + m + "</span>";
       });
       if (fade) {
-        view.style.opacity = "0";
-        setTimeout(function () { view.innerHTML = html; view.style.opacity = "1"; }, 180);
+        el.style.opacity = "0";
+        setTimeout(function () { el.innerHTML = html; el.style.opacity = "1"; }, 180);
       } else {
-        view.innerHTML = html;
+        el.innerHTML = html;
       }
+    }
+    function renderHosts(key, fade) { renderPre(view, BASE + P[key].extra, fade); }
+    function press(btn) {
+      btn.classList.add("pressed");
+      setTimeout(function () { btn.classList.remove("pressed"); }, 240);
     }
     function select(key, fade) {
       rows.forEach(function (r) { r.classList.toggle("sel", r.dataset.p === key); });
@@ -768,8 +838,7 @@
     }
     function applyTo(key) {
       rows.forEach(function (r) { r.classList.toggle("active", r.dataset.p === key); });
-      applyBtn.classList.add("pressed");
-      setTimeout(function () { applyBtn.classList.remove("pressed"); }, 240);
+      press(applyBtn);
     }
 
     var current = "dev";
@@ -792,6 +861,58 @@
       });
     });
     applyBtn.addEventListener("click", function () { applyTo(current); });
+
+    // Rail navigation: Fragments and Sources views, mirroring the app.
+    var cols = { profiles: "colProfiles", fragments: "colFragments", sources: "colSources" };
+    var panes = { profiles: "paneProfile", fragments: "paneFragment", sources: "paneSource" };
+    var railBtns = [].slice.call(win.querySelectorAll(".rail-item"));
+    railBtns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        railBtns.forEach(function (o) { o.classList.toggle("sel", o === b); });
+        Object.keys(cols).forEach(function (v) {
+          document.getElementById(cols[v]).classList.toggle("hidden", v !== b.dataset.view);
+          document.getElementById(panes[v]).classList.toggle("hidden", v !== b.dataset.view);
+        });
+      });
+    });
+
+    var FR = {
+      docker: "# Docker containers\n127.0.0.1\tdb.docker.internal\n127.0.0.1\tredis.docker.internal\n127.0.0.1\tmail.docker.internal",
+      studio: "# Studio sites\n127.0.0.1\tblog.studio.test\n127.0.0.1\tshop.studio.test",
+      sandbox: "# Sandbox box\n203.0.113.20\tsandbox.myapp.com"
+    };
+    var fragView = document.getElementById("fragView");
+    var fragRows = [].slice.call(win.querySelectorAll(".f-row"));
+    renderPre(fragView, FR.docker, false);
+    fragRows.forEach(function (r) {
+      r.addEventListener("click", function () {
+        fragRows.forEach(function (o) { o.classList.toggle("sel", o === r); });
+        renderPre(fragView, FR[r.dataset.f], true);
+      });
+    });
+    document.getElementById("saveBtn").addEventListener("click", function () { press(this); });
+    document.getElementById("cancelBtn").addEventListener("click", function () { press(this); });
+
+    var SRC = {
+      sb: { name: "StevenBlack Unified", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", meta: "Refreshed 12 minutes ago · 141,118 entries" },
+      hagezi: { name: "HaGeZi Pro", url: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.txt", meta: "Refreshed 12 minutes ago · 156,433 entries" },
+      team: { name: "Team blocklist", url: "https://example.com/hosts.txt", meta: "Refreshed 1 hour ago · 214 entries" }
+    };
+    var srcRows = [].slice.call(win.querySelectorAll(".s-row"));
+    srcRows.forEach(function (r) {
+      r.addEventListener("click", function () {
+        srcRows.forEach(function (o) { o.classList.toggle("sel", o === r); });
+        var s = SRC[r.dataset.s];
+        document.getElementById("srcName").textContent = s.name;
+        document.getElementById("srcUrl").textContent = s.url;
+        document.getElementById("srcMeta").textContent = s.meta;
+      });
+    });
+    document.getElementById("refreshBtn").addEventListener("click", function () {
+      press(this);
+      document.getElementById("srcMeta").textContent =
+        document.getElementById("srcMeta").textContent.replace(/^Refreshed [^·]+/, "Refreshed just now ");
+    });
   })();
 </script>
 </body>
