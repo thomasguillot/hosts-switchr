@@ -185,6 +185,97 @@
   }
   .shot img { display: block; width: 100%; height: auto; }
   .shot-reveal { animation: shot-settle 1s var(--ease) .18s both; }
+
+  /* ---------- interactive hero window ---------- */
+  /* Fixed 868x540 design space; JS scales it to the container width so
+     every part of the mock window shrinks together like a screenshot would. */
+  .hero-app { aspect-ratio: 868 / 540; position: relative; background: var(--surface); }
+  .win {
+    position: absolute; top: 0; left: 0;
+    width: 868px; height: 540px;
+    transform-origin: top left;
+    display: grid; grid-template-columns: 185px 205px 1fr;
+    font-size: 13px; line-height: 1.45; text-align: left;
+  }
+  .win, .win * { user-select: none; }
+  .win button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: default; }
+
+  .win-rail { background: var(--surface-2); border-right: 1px solid var(--border); padding: 14px 12px; }
+  .win-rail .tl { display: flex; gap: 8px; padding: 4px 2px 22px; }
+  .win-rail .tl span { width: 12px; height: 12px; border-radius: 50%; }
+  .win-rail .tl .r { background: #FF5F57; } .win-rail .tl .y { background: #FEBC2E; } .win-rail .tl .g { background: #28C840; }
+  .rail-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 8px; margin-bottom: 2px;
+    font-weight: 500; color: var(--text);
+  }
+  .rail-item svg { width: 16px; height: 16px; flex: none; }
+  .rail-item.sel { background: var(--accent); color: var(--on-accent); }
+
+  .win-list { background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; }
+  .win-list .list-title { font-size: 15px; font-weight: 700; padding: 0 4px 14px; }
+  .p-row {
+    display: flex; align-items: center; gap: 7px; width: 100%;
+    padding: 5px 9px 5px 8px; border-radius: 7px; margin-bottom: 1px;
+  }
+  .p-row .pcheck { width: 12px; height: 12px; flex: none; opacity: 0; transition: opacity .15s ease; }
+  .p-row.active .pcheck { opacity: 1; }
+  .p-row .plock { width: 11px; height: 11px; flex: none; margin-left: auto; color: var(--faint); }
+  .p-row:hover:not(.sel) { background: var(--surface-2); }
+  .p-row.sel { background: var(--accent); color: var(--on-accent); }
+  .p-row.sel .plock { color: var(--on-accent); opacity: .8; }
+  .win .add-profile {
+    margin: 10px 0 0 8px; align-self: flex-start;
+    padding: 4px 12px; border-radius: 7px; font-size: 12.5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+
+  .win-main { background: var(--surface); display: flex; flex-direction: column; min-width: 0; }
+  .main-top { display: flex; justify-content: flex-end; padding: 12px 14px 0; }
+  .win .share {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .win .share svg { width: 15px; height: 15px; }
+  .hosts {
+    flex: 1; margin: 0; padding: 4px 22px 14px;
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; line-height: 1.75; white-space: pre; overflow: hidden;
+    transition: opacity .18s ease;
+  }
+  .hosts .cmt { color: var(--faint); }
+  .pane-row { border-top: 1px solid var(--border); padding: 8px 16px; display: flex; align-items: center; gap: 7px; }
+  .pane-row .chev { width: 11px; height: 11px; color: var(--muted); transition: rotate .15s ease; }
+  .pane-row .chev.closed { rotate: -90deg; }
+  .pane-row h4 { margin: 0; font-size: 13px; font-weight: 640; }
+  .frag-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 16px 6px 34px; border-top: 1px solid var(--border);
+  }
+  .frag-row:first-of-type { border-top: 0; }
+  .frag-row.off-name { color: var(--muted); }
+  .win .switch {
+    width: 30px; height: 18px; border-radius: 9px; position: relative; flex: none;
+    background: var(--border-strong); transition: background .18s ease;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 1.5px; left: 1.5px;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+    transition: translate .18s var(--ease);
+  }
+  .win .switch.on { background: var(--accent); }
+  .switch.on::after { translate: 12px 0; }
+  .apply-bar { border-top: 1px solid var(--border); padding: 10px 16px; }
+  .win .apply {
+    background: var(--accent); color: var(--on-accent);
+    padding: 4px 14px; border-radius: 7px; font-weight: 590;
+    transition: filter .15s ease, transform .15s ease;
+  }
+  .win .apply:hover { filter: brightness(1.06); }
+  .win .apply.pressed { filter: brightness(.82); transform: scale(.97); }
+  .win .add-profile:hover, .win .share:hover { background: var(--border); }
   @keyframes shot-settle {
     from { opacity: 0; transform: perspective(1400px) translateY(26px) rotateX(4deg) scale(.975); }
     to   { opacity: 1; transform: none; }
@@ -277,7 +368,7 @@
   /* Continuous rail: runs the full height of each step behind the opaque
      number circles, so the hairline connects step to step with no gaps. */
   ol.steps li:not(:last-child)::after {
-    content: ""; position: absolute; left: 16.5px; top: 0; bottom: 0;
+    content: ""; position: absolute; left: 16.5px; top: 0; bottom: -1px;
     width: 1px; background: var(--border); z-index: 0;
   }
   ol.steps li h3 { font-size: 1rem; font-weight: 600; margin: 4px 0 4px; }
@@ -377,11 +468,62 @@
   </div>
 </header>
 
-<div class="shot shot-reveal">
-  <picture>
-    <source srcset="assets/hero-dark.png" media="(prefers-color-scheme: dark)">
-    <img src="assets/hero-light.png" alt="Hosts Switchr's main window — profiles in the sidebar, sources and fragments, and the editor." width="1736" height="1034" loading="eager" fetchpriority="high">
-  </picture>
+<div class="shot shot-reveal hero-app">
+  <div class="win" id="heroWin" aria-label="Interactive demo of the Hosts Switchr main window">
+    <div class="win-rail">
+      <div class="tl" aria-hidden="true"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+      <div class="rail-item sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Profiles</div>
+      <div class="rail-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>Fragments</div>
+      <div class="rail-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 15.5a5 5 0 0 1 0-7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.6 18.4a9 9 0 0 1 0-12.8"/><path d="M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>Sources</div>
+    </div>
+    <div class="win-list">
+      <div class="list-title">Profiles</div>
+      <button class="p-row" data-p="default" type="button">
+        <svg class="pcheck" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg>
+        System Default
+        <svg class="plock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </button>
+      <button class="p-row sel active" data-p="dev" type="button">
+        <svg class="pcheck" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg>
+        Dev
+      </button>
+      <button class="p-row" data-p="staging" type="button">
+        <svg class="pcheck" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg>
+        Staging
+      </button>
+      <button class="p-row" data-p="block" type="button">
+        <svg class="pcheck" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 6.4 4.6 9.2 10.2 3"/></svg>
+        Blocklists
+      </button>
+      <button class="add-profile" type="button">Add Profile</button>
+    </div>
+    <div class="win-main">
+      <div class="main-top">
+        <button class="share" type="button" aria-label="Share (demo)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m8 6.5 4-3.5 4 3.5"/><path d="M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg></button>
+      </div>
+      <pre class="hosts" id="hostsView">127.0.0.1	localhost
+255.255.255.255	broadcasthost
+::1		localhost
+
+<span class="cmt"># Local apps</span>
+127.0.0.1	myapp.test
+127.0.0.1	api.myapp.test</pre>
+      <div class="pane-row">
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg>
+        <h4>Fragments</h4>
+      </div>
+      <div id="fragRows">
+        <div class="frag-row"><span>Docker</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Docker fragment"></button></div>
+        <div class="frag-row"><span>Studio</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Studio fragment"></button></div>
+        <div class="frag-row"><span>Sandbox</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Sandbox fragment"></button></div>
+      </div>
+      <div class="pane-row">
+        <svg class="chev closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg>
+        <h4>Sources</h4>
+      </div>
+      <div class="apply-bar"><button class="apply" id="applyBtn" type="button">Apply</button></div>
+    </div>
+  </div>
 </div>
 
 <section>
@@ -583,6 +725,73 @@
       });
     }, { threshold: 0.4 });
     io.observe(demo);
+  })();
+
+  // Interactive hero window: a live, clickable recreation of the app.
+  // Deliberately static until touched — the menu-bar vignette below is
+  // the page's one animated set piece.
+  (function () {
+    var win = document.getElementById("heroWin");
+    if (!win) return;
+    var view = document.getElementById("hostsView");
+    var rows = [].slice.call(win.querySelectorAll(".p-row"));
+    var frags = [].slice.call(win.querySelectorAll("#fragRows .switch"));
+    var applyBtn = document.getElementById("applyBtn");
+
+    var BASE = "127.0.0.1\tlocalhost\n255.255.255.255\tbroadcasthost\n::1\t\tlocalhost";
+    var P = {
+      "default": { extra: "", frags: [0, 0, 0] },
+      dev: { extra: "\n\n# Local apps\n127.0.0.1\tmyapp.test\n127.0.0.1\tapi.myapp.test", frags: [1, 1, 0] },
+      staging: { extra: "\n\n# Production domains -> staging box\n203.0.113.7\tmyapp.com\n203.0.113.7\twww.myapp.com", frags: [1, 0, 0] },
+      block: { extra: "\n\n# + StevenBlack unified (~140,000 entries)\n0.0.0.0\tdoubleclick.net\n0.0.0.0\tads.example.net\n0.0.0.0\ttracker.example.io", frags: [0, 0, 0] }
+    };
+
+    function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+    function renderHosts(key, fade) {
+      var html = esc(BASE + P[key].extra).replace(/^#.*$/gm, function (m) {
+        return '<span class="cmt">' + m + "</span>";
+      });
+      if (fade) {
+        view.style.opacity = "0";
+        setTimeout(function () { view.innerHTML = html; view.style.opacity = "1"; }, 180);
+      } else {
+        view.innerHTML = html;
+      }
+    }
+    function select(key, fade) {
+      rows.forEach(function (r) { r.classList.toggle("sel", r.dataset.p === key); });
+      renderHosts(key, fade);
+      P[key].frags.forEach(function (on, idx) {
+        frags[idx].classList.toggle("on", !!on);
+        frags[idx].setAttribute("aria-checked", on ? "true" : "false");
+      });
+    }
+    function applyTo(key) {
+      rows.forEach(function (r) { r.classList.toggle("active", r.dataset.p === key); });
+      applyBtn.classList.add("pressed");
+      setTimeout(function () { applyBtn.classList.remove("pressed"); }, 240);
+    }
+
+    var current = "dev";
+    select(current, false);
+
+    var stage = win.parentElement;
+    function fit() { win.style.transform = "scale(" + stage.clientWidth / 868 + ")"; }
+    fit();
+    if ("ResizeObserver" in window) new ResizeObserver(fit).observe(stage);
+    else addEventListener("resize", fit);
+
+    rows.forEach(function (r) {
+      r.addEventListener("click", function () { current = r.dataset.p; select(current, true); });
+    });
+    frags.forEach(function (s) {
+      s.addEventListener("click", function () {
+        var on = !s.classList.contains("on");
+        s.classList.toggle("on", on);
+        s.setAttribute("aria-checked", on ? "true" : "false");
+      });
+    });
+    applyBtn.addEventListener("click", function () { applyTo(current); });
   })();
 </script>
 </body>
