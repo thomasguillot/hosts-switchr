@@ -20,3 +20,8 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Local tooling dot-directories (editor/agent caches) — keep real repo dirs
+.*/
+!.github/
+!.well-known/
