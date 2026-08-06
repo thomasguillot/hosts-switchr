@@ -232,7 +232,7 @@
   .p-row:hover:not(.sel) { background: var(--surface-2); }
   .p-row.sel { background: var(--accent); color: var(--on-accent); }
   .p-row.sel .plock { color: var(--on-accent); opacity: .8; }
-  .s-row { flex-direction: column; align-items: flex-start; }
+  .win .s-row { flex-direction: column; align-items: flex-start; }
   .s-row .s-sub { font-size: 11px; line-height: 1.35; color: var(--muted); }
   .p-row.sel .s-sub { color: var(--on-accent); opacity: .85; }
   .sec-label { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 10px 10px 4px; }
@@ -346,6 +346,7 @@
   .mb-right { display: flex; align-items: center; gap: 11px; color: var(--text); }
   .mb-right svg { width: 16px; height: 16px; display: block; }
   .mb-status { padding: 3px 5px; margin: -3px 0; border-radius: 6px; transition: background .12s ease; }
+  .mb-status:hover { background: var(--surface-2); }
   .mb-status.pressed { background: var(--border); }
   .mb-clock { color: var(--muted); font-variant-numeric: tabular-nums; }
   .mb-desktop { display: flex; justify-content: flex-end; padding: 8px 10px 20px; }
@@ -366,7 +367,7 @@
   }
   .mb-item .chk { width: 11px; height: 11px; opacity: 0; transition: opacity .15s ease; }
   .mb-item.on .chk { opacity: 1; }
-  .mb-item.hl { background: var(--accent); color: var(--on-accent); }
+  .mb-item:hover, .mb-item.hl { background: var(--accent); color: var(--on-accent); }
   .mb-sep { height: 1px; background: var(--border); margin: 5px 8px; }
   @media (max-width: 420px) { .mb-left span:nth-child(n+4) { display: none; } }
 
@@ -465,13 +466,14 @@
     html.js ol.steps.in li::after { transform: none; }
     html.js ol.steps.in li h3, html.js ol.steps.in li p { opacity: 1; transform: none; }
 
-    /* Vignette menu starts closed and drops in when the status item is
-       "clicked"; without JS or with reduced motion it renders open. */
+    /* Vignette menu drops in and out as the status item is clicked;
+       without JS or with reduced motion it renders open. */
     html.js .mb-menu {
       opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top right;
       transition: opacity .22s var(--ease), transform .22s var(--ease);
+      pointer-events: none;
     }
-    html.js .mb-menu.open { opacity: 1; transform: none; }
+    html.js .mb-menu.open { opacity: 1; transform: none; pointer-events: auto; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -722,74 +724,51 @@
     setInterval(setClock, 30000);
   })();
 
-  // Play the whole gesture, macOS-menu style: click the status item, the
-  // menu drops open, then the active profile switches on a loop (highlight,
-  // click flicker, checkmark moves). Replays when scrolled back into view;
-  // never runs under prefers-reduced-motion.
+  // Interactive menu-bar vignette, macOS-faithful: the status item toggles
+  // the menu; picking an item plays the click flicker, moves the checkmark,
+  // and closes the menu. Starts open so it's discoverable.
   (function () {
     var demo = document.querySelector(".mbdemo");
-    if (!demo || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!demo) return;
     var status = demo.querySelector(".mb-status");
     var menu = demo.querySelector(".mb-menu");
-    var items = [].slice.call(demo.querySelectorAll(".mb-item[data-profile]"));
-    var i = items.findIndex(function (el) { return el.classList.contains("on"); });
-    var pending = [];
+    var profiles = [].slice.call(demo.querySelectorAll(".mb-item[data-profile]"));
+    var others = [].slice.call(demo.querySelectorAll(".mb-item:not([data-profile])"));
+    var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    function after(ms, fn) { pending.push(setTimeout(fn, ms)); }
+    function setOpen(open) {
+      menu.classList.toggle("open", open);
+      status.classList.toggle("pressed", open);
+    }
+    setOpen(true);
 
-    function tick() {
-      i = (i + 1) % items.length;
-      var row = items[i];
+    status.addEventListener("click", function () {
+      setOpen(!menu.classList.contains("open"));
+    });
+
+    function pick(row, commit) {
+      if (reduced) { commit(); setOpen(false); return; }
       row.classList.add("hl");
-      after(320, function () { row.classList.remove("hl"); });
-      after(410, function () { row.classList.add("hl"); });
-      after(580, function () {
+      setTimeout(function () { row.classList.remove("hl"); }, 90);
+      setTimeout(function () { row.classList.add("hl"); }, 180);
+      setTimeout(function () {
         row.classList.remove("hl");
-        items.forEach(function (el) { el.classList.remove("on"); });
-        row.classList.add("on");
-      });
+        commit();
+        setOpen(false);
+      }, 320);
     }
 
-    function step() {
-      tick();
-      if (i === items.length - 1) {
-        after(1500, function () {
-          menu.classList.remove("open");
-          status.classList.remove("pressed");
-          after(2200, play);
+    profiles.forEach(function (row) {
+      row.addEventListener("click", function () {
+        pick(row, function () {
+          profiles.forEach(function (el) { el.classList.remove("on"); });
+          row.classList.add("on");
         });
-      } else {
-        after(2600, step);
-      }
-    }
-
-    function play() {
-      after(600, function () { status.classList.add("pressed"); });
-      after(780, function () { menu.classList.add("open"); });
-      after(1900, step);
-    }
-
-    function reset() {
-      pending.forEach(clearTimeout);
-      pending = [];
-      status.classList.remove("pressed");
-      menu.classList.remove("open");
-      items.forEach(function (el) { el.classList.remove("hl"); });
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      status.classList.add("pressed");
-      menu.classList.add("open");
-      return;
-    }
-    var playing = false;
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting && !playing) { playing = true; play(); }
-        else if (!e.isIntersecting && playing) { playing = false; reset(); }
       });
-    }, { threshold: 0.4 });
-    io.observe(demo);
+    });
+    others.forEach(function (row) {
+      row.addEventListener("click", function () { pick(row, function () {}); });
+    });
   })();
 
   // Interactive hero window: a live, clickable recreation of the app.
@@ -799,7 +778,7 @@
     var win = document.getElementById("heroWin");
     if (!win) return;
     var view = document.getElementById("hostsView");
-    var rows = [].slice.call(win.querySelectorAll(".p-row"));
+    var rows = [].slice.call(win.querySelectorAll(".p-row[data-p]"));
     var frags = [].slice.call(win.querySelectorAll("#fragRows .switch"));
     var applyBtn = document.getElementById("applyBtn");
 
