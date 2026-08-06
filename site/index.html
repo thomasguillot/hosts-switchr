@@ -724,9 +724,9 @@
     setInterval(setClock, 30000);
   })();
 
-  // Interactive menu-bar vignette, macOS-faithful: the status item toggles
-  // the menu; picking an item plays the click flicker, moves the checkmark,
-  // and closes the menu. Starts open so it's discoverable.
+  // Interactive menu-bar vignette: the status item toggles the menu;
+  // picking an item plays the macOS click flicker and moves the checkmark.
+  // The menu stays open so visitors can keep playing.
   (function () {
     var demo = document.querySelector(".mbdemo");
     if (!demo) return;
@@ -747,14 +747,13 @@
     });
 
     function pick(row, commit) {
-      if (reduced) { commit(); setOpen(false); return; }
+      if (reduced) { commit(); return; }
       row.classList.add("hl");
       setTimeout(function () { row.classList.remove("hl"); }, 90);
       setTimeout(function () { row.classList.add("hl"); }, 180);
       setTimeout(function () {
         row.classList.remove("hl");
         commit();
-        setOpen(false);
       }, 320);
     }
 
