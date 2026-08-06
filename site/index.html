@@ -526,7 +526,7 @@
     var menu = demo.querySelector(".mb-menu");
     var items = [].slice.call(demo.querySelectorAll(".mb-item[data-profile]"));
     var i = items.findIndex(function (el) { return el.classList.contains("on"); });
-    var timer = null, pending = [];
+    var pending = [];
 
     function after(ms, fn) { pending.push(setTimeout(fn, ms)); }
 
@@ -543,19 +543,28 @@
       });
     }
 
+    function step() {
+      tick();
+      if (i === items.length - 1) {
+        after(1500, function () {
+          menu.classList.remove("open");
+          status.classList.remove("pressed");
+          after(2200, play);
+        });
+      } else {
+        after(2600, step);
+      }
+    }
+
     function play() {
       after(600, function () { status.classList.add("pressed"); });
       after(780, function () { menu.classList.add("open"); });
-      after(1900, function () {
-        tick();
-        timer = setInterval(tick, 2600);
-      });
+      after(1900, step);
     }
 
     function reset() {
       pending.forEach(clearTimeout);
       pending = [];
-      if (timer) { clearInterval(timer); timer = null; }
       status.classList.remove("pressed");
       menu.classList.remove("open");
       items.forEach(function (el) { el.classList.remove("hl"); });
