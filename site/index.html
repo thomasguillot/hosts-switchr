@@ -224,6 +224,8 @@
   .mb-left .app { font-weight: 640; color: var(--text); }
   .mb-right { display: flex; align-items: center; gap: 11px; color: var(--text); }
   .mb-right svg { width: 16px; height: 16px; display: block; }
+  .mb-status { padding: 3px 5px; margin: -3px 0; border-radius: 6px; transition: background .12s ease; }
+  .mb-status.pressed { background: var(--border); }
   .mb-clock { color: var(--muted); font-variant-numeric: tabular-nums; }
   .mb-desktop { display: flex; justify-content: flex-end; padding: 8px 10px 20px; }
   .mb-menu {
@@ -341,6 +343,14 @@
     html.js ol.steps.in li::before { opacity: 1; transform: none; }
     html.js ol.steps.in li::after { transform: none; }
     html.js ol.steps.in li h3, html.js ol.steps.in li p { opacity: 1; transform: none; }
+
+    /* Vignette menu starts closed and drops in when the status item is
+       "clicked"; without JS or with reduced motion it renders open. */
+    html.js .mb-menu {
+      opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top right;
+      transition: opacity .22s var(--ease), transform .22s var(--ease);
+    }
+    html.js .mb-menu.open { opacity: 1; transform: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -382,7 +392,7 @@
       <div class="mb-bar">
         <div class="mb-left"><span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span><span>Go</span></div>
         <div class="mb-right">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 5.75C4.75 5.19772 5.19772 4.75 5.75 4.75H18.25C18.8023 4.75 19.25 5.19772 19.25 5.75V9.25C19.25 9.80228 18.8023 10.25 18.25 10.25H5.75C5.19771 10.25 4.75 9.80228 4.75 9.25V5.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 14.75C4.75 14.1977 5.19772 13.75 5.75 13.75H18.25C18.8023 13.75 19.25 14.1977 19.25 14.75V18.25C19.25 18.8023 18.8023 19.25 18.25 19.25H5.75C5.19771 19.25 4.75 18.8023 4.75 18.25V14.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 5V10"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 14V19"/></svg>
+          <span class="mb-status"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 5.75C4.75 5.19772 5.19772 4.75 5.75 4.75H18.25C18.8023 4.75 19.25 5.19772 19.25 5.75V9.25C19.25 9.80228 18.8023 10.25 18.25 10.25H5.75C5.19771 10.25 4.75 9.80228 4.75 9.25V5.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.75 14.75C4.75 14.1977 5.19772 13.75 5.75 13.75H18.25C18.8023 13.75 19.25 14.1977 19.25 14.75V18.25C19.25 18.8023 18.8023 19.25 18.25 19.25H5.75C5.19771 19.25 4.75 18.8023 4.75 18.25V14.75Z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 5V10"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.25 14V19"/></svg></span>
           <span class="mb-clock">Wed 9:41</span>
         </div>
       </div>
@@ -505,33 +515,62 @@
     setInterval(setClock, 30000);
   })();
 
-  // Loop the active-profile switch, macOS-menu style (highlight, click
-  // flicker, checkmark moves). Runs only while visible, never under
-  // prefers-reduced-motion.
+  // Play the whole gesture, macOS-menu style: click the status item, the
+  // menu drops open, then the active profile switches on a loop (highlight,
+  // click flicker, checkmark moves). Replays when scrolled back into view;
+  // never runs under prefers-reduced-motion.
   (function () {
     var demo = document.querySelector(".mbdemo");
     if (!demo || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var status = demo.querySelector(".mb-status");
+    var menu = demo.querySelector(".mb-menu");
     var items = [].slice.call(demo.querySelectorAll(".mb-item[data-profile]"));
     var i = items.findIndex(function (el) { return el.classList.contains("on"); });
-    var timer = null;
+    var timer = null, pending = [];
+
+    function after(ms, fn) { pending.push(setTimeout(fn, ms)); }
 
     function tick() {
       i = (i + 1) % items.length;
       var row = items[i];
       row.classList.add("hl");
-      setTimeout(function () { row.classList.remove("hl"); }, 320);
-      setTimeout(function () { row.classList.add("hl"); }, 410);
-      setTimeout(function () {
+      after(320, function () { row.classList.remove("hl"); });
+      after(410, function () { row.classList.add("hl"); });
+      after(580, function () {
         row.classList.remove("hl");
         items.forEach(function (el) { el.classList.remove("on"); });
         row.classList.add("on");
-      }, 580);
+      });
     }
 
+    function play() {
+      after(600, function () { status.classList.add("pressed"); });
+      after(780, function () { menu.classList.add("open"); });
+      after(1900, function () {
+        tick();
+        timer = setInterval(tick, 2600);
+      });
+    }
+
+    function reset() {
+      pending.forEach(clearTimeout);
+      pending = [];
+      if (timer) { clearInterval(timer); timer = null; }
+      status.classList.remove("pressed");
+      menu.classList.remove("open");
+      items.forEach(function (el) { el.classList.remove("hl"); });
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      status.classList.add("pressed");
+      menu.classList.add("open");
+      return;
+    }
+    var playing = false;
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (e.isIntersecting && !timer) timer = setInterval(tick, 2600);
-        else if (!e.isIntersecting && timer) { clearInterval(timer); timer = null; }
+        if (e.isIntersecting && !playing) { playing = true; play(); }
+        else if (!e.isIntersecting && playing) { playing = false; reset(); }
       });
     }, { threshold: 0.4 });
     io.observe(demo);
