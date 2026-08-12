@@ -1,6 +1,6 @@
 import Observation
 
-enum SidebarSection: Hashable { case profiles, sources, fragments, settings }
+enum SidebarSection: Hashable { case profiles, sources, fragments, about, settings }
 
 @MainActor
 @Observable

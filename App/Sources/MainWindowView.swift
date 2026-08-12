@@ -16,14 +16,17 @@ struct MainWindowView: View {
     @State private var selectedSourceID: UUID?
     @State private var showingAddSource = false
 
+    // About and Settings are rail-plus-detail; the list column has nothing to show for them.
+    private var isUtilitySection: Bool { router.section == .about || router.section == .settings }
+
     var body: some View {
         @Bindable var router = router
         return Group {
-            if router.section == .settings {
+            if isUtilitySection {
                 NavigationSplitView {
                     rail(selection: $router.section)
                 } detail: {
-                    SettingsView()
+                    detailColumn
                 }
             } else {
                 NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -56,7 +59,11 @@ struct MainWindowView: View {
         } message: { Text(model.lastError ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if router.section != .settings {
+                if isUtilitySection {
+                    // Load-bearing, not filler: an empty toolbar is dropped entirely, and the
+                    // unified toolbar is what fuses the rail full height under the titlebar.
+                    Color.clear.frame(width: 1, height: 1)
+                } else {
                     Menu {
                         Button("Export Config…") { exportConfig() }
                         Button("Import Config…") { importConfig() }
@@ -65,10 +72,6 @@ struct MainWindowView: View {
                         Button("Import Hosts File as Fragment…") { importHostsFile(.fragment) }
                     } label: { Label("Import / Export", systemImage: "square.and.arrow.up.on.square") }
                     .help("Import or export configuration")
-                } else {
-                    // Load-bearing, not filler: an empty toolbar is dropped entirely, and the
-                    // unified toolbar is what fuses the rail full height under the titlebar.
-                    Color.clear.frame(width: 1, height: 1)
                 }
             }
         }
@@ -102,13 +105,15 @@ struct MainWindowView: View {
         .navigationSplitViewColumnWidth(railWidth)
         .safeAreaInset(edge: .bottom) {
             List(selection: selection) {
+                railItem(.about, "About", "info.circle",
+                         help: "Version and updates")
                 railItem(.settings, "Settings", "gearshape",
                          help: "App preferences")
             }
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
-            // Sized for one railItem row at .title3; scrolling is off, so a taller row clips silently.
-            .frame(height: 44)
+            // Sized for two railItem rows at .title3; scrolling is off, so a taller row clips silently.
+            .frame(height: 80)
         }
     }
 
@@ -118,6 +123,7 @@ struct MainWindowView: View {
         case .sources: SourcesView(selectedSourceID: $selectedSourceID,
                                    onAddSource: { showingAddSource = true })
         case .fragments: FragmentsSidebarView()
+        case .about: EmptyView()
         case .settings: EmptyView()
         }
     }
@@ -142,7 +148,8 @@ struct MainWindowView: View {
             } else if !model.fragments.isEmpty {
                 placeholder("No Fragment Selected", "rectangle.stack")
             }
-        case .settings: EmptyView()
+        case .about: AboutView()
+        case .settings: SettingsView()
         }
     }
 
