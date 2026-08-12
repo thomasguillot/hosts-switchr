@@ -4,6 +4,7 @@ import HostsKit
 
 struct MenuBarView: View {
     @Environment(AppModel.self) private var model
+    @Environment(WindowRouter.self) private var router
     @Environment(UpdateController.self) private var update
     @Environment(\.openWindow) private var openWindow
 
@@ -33,7 +34,13 @@ struct MenuBarView: View {
         }
         updateItem
         Divider()
-        SettingsLink { Label("Settings\u{2026}", systemImage: "gearshape") }
+        Button {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            router.section = .settings
+            openWindow(id: "main")
+        } label: {
+            Label("Settings\u{2026}", systemImage: "gearshape")
+        }
         Button {
             model.flushPendingSave()
             NSApplication.shared.terminate(nil)

@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    let router = WindowRouter()
     let updateController = UpdateController()
     lazy var updateScheduler = UpdateScheduler(controller: updateController)
 
@@ -54,6 +55,20 @@ private struct AboutButton: View {
     }
 }
 
+private struct SettingsMenuButton: View {
+    @Environment(\.openWindow) private var openWindow
+    let router: WindowRouter
+
+    var body: some View {
+        Button("Settings\u{2026}") {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            router.section = .settings
+            openWindow(id: "main")
+        }
+        .keyboardShortcut(",", modifiers: .command)
+    }
+}
+
 private struct HelpMenuButton: View {
     @Environment(\.openWindow) private var openWindow
 
@@ -80,12 +95,14 @@ struct HostsSwitchrApp: App {
             MainWindowView()
                 .frame(minWidth: 640, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
                 .environment(appDelegate.model)
+                .environment(appDelegate.router)
         }
         .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: Self.defaultWindowSize.width, height: Self.defaultWindowSize.height)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .appInfo) { AboutButton() }
+            CommandGroup(replacing: .appSettings) { SettingsMenuButton(router: appDelegate.router) }
             CommandGroup(after: .pasteboard) { DeleteCommand() }
             CommandGroup(replacing: .help) { HelpMenuButton() }
         }
@@ -98,13 +115,11 @@ struct HostsSwitchrApp: App {
         MenuBarExtra {
             MenuBarView()
                 .environment(appDelegate.model)
+                .environment(appDelegate.router)
                 .environment(appDelegate.updateController)
         } label: {
             MenuBarLabel().environment(appDelegate.model)
         }
         .menuBarExtraStyle(.menu)
-        Settings {
-            SettingsView().environment(appDelegate.model)
-        }
     }
 }

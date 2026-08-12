@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 import HostsKit
 
 struct SettingsView: View {
@@ -14,38 +13,41 @@ struct SettingsView: View {
     @State private var loginError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("Refresh interval", selection: $intervalHours) {
-                Text("Off").tag(0)
-                Text("Every 6 hours").tag(6)
-                Text("Every 12 hours").tag(12)
-                Text("Daily").tag(24)
-                Text("Weekly").tag(168)
-            }
-            .fixedSize()
-            Toggle("Auto re-apply active profile after refresh", isOn: $autoReapply)
-            Toggle("Show active profile name in menu bar", isOn: $showActiveName)
-            Toggle("Automatically check for updates on launch", isOn: $autoCheckForUpdates)
-            Toggle("Launch at login", isOn: Binding(
-                get: { launchAtLogin },
-                set: { newValue in
-                    let result = LaunchAtLogin.apply(newValue, to: loginItem)
-                    launchAtLogin = result.isEnabled
-                    loginError = result.error
+        Form {
+            Section("General") {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { newValue in
+                        let result = LaunchAtLogin.apply(newValue, to: loginItem)
+                        launchAtLogin = result.isEnabled
+                        loginError = result.error
+                    }
+                ))
+                if let loginError {
+                    Text(loginError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
                 }
-            ))
-            if let loginError {
-                Text(loginError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                Toggle("Show active profile name in menu bar", isOn: $showActiveName)
+            }
+            Section("Sources") {
+                Picker("Refresh interval", selection: $intervalHours) {
+                    Text("Off").tag(0)
+                    Text("Every 6 hours").tag(6)
+                    Text("Every 12 hours").tag(12)
+                    Text("Daily").tag(24)
+                    Text("Weekly").tag(168)
+                }
+                Toggle("Auto re-apply active profile after refresh", isOn: $autoReapply)
+            }
+            Section("Updates") {
+                Toggle("Automatically check for updates on launch", isOn: $autoCheckForUpdates)
             }
         }
-        .padding(20)
-        .frame(width: 400, alignment: .leading)
+        .formStyle(.grouped)
+        .navigationTitle("Settings")
+        .focusedSceneValue(\.deleteAction, nil)
         .onChange(of: intervalHours) { _, _ in model.rescheduleRefresh() }
-        .onAppear {
-            launchAtLogin = loginItem.isEnabled
-            NSApplication.shared.activate(ignoringOtherApps: true)
-        }
+        .onAppear { launchAtLogin = loginItem.isEnabled }
     }
 }

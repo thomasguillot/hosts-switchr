@@ -3,11 +3,11 @@ import HostsKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum SidebarSection: Hashable { case profiles, sources, fragments }
+enum SidebarSection: Hashable { case profiles, sources, fragments, settings }
 
 struct MainWindowView: View {
     @Environment(AppModel.self) private var model
-    @State private var section: SidebarSection = .profiles
+    @Environment(WindowRouter.self) private var router
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var preview: PreviewData?
     @State private var pendingApplyID: UUID?
@@ -17,46 +17,22 @@ struct MainWindowView: View {
     @State private var showingAddSource = false
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            List(selection: $section) {
-                railItem(.profiles, "Profiles", "doc.text",
-                         help: "Switchable /etc/hosts profiles")
-                railItem(.fragments, "Fragments", "rectangle.stack",
-                         help: "Reusable host snippets you toggle per profile")
-                railItem(.sources, "Sources", "antenna.radiowaves.left.and.right",
-                         help: "Subscribed remote blocklist / hosts sources")
-            }
-            .scrollContentBackground(.hidden)
-            .toolbar(removing: .sidebarToggle)
-        } content: {
-            Group {
-                switch section {
-                case .profiles: ProfileSidebarView()
-                case .sources: SourcesView(selectedSourceID: $selectedSourceID,
-                                           onAddSource: { showingAddSource = true })
-                case .fragments: FragmentsSidebarView()
+        @Bindable var router = router
+        return Group {
+            if router.section == .settings {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    rail(selection: $router.section)
+                } detail: {
+                    SettingsView()
                 }
-            }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 224, max: 400)
-        } detail: {
-            switch section {
-            case .profiles:
-                if let id = model.selectedProfileID {
-                    ProfileEditorView(profileID: id, requestApply: { requestPreview(id) })
-                } else {
-                    placeholder("No Profile Selected", "doc.text")
-                }
-            case .sources:
-                if let id = selectedSourceID, model.sources.contains(where: { $0.id == id }) {
-                    SourceDetailView(sourceID: id)
-                } else {
-                    placeholder("No Source Selected", "antenna.radiowaves.left.and.right")
-                }
-            case .fragments:
-                if let id = model.selectedFragmentID {
-                    FragmentEditorView(fragmentID: id, requestApply: { requestPreview($0) })
-                } else if !model.fragments.isEmpty {
-                    placeholder("No Fragment Selected", "rectangle.stack")
+            } else {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    rail(selection: $router.section)
+                } content: {
+                    contentColumn
+                        .navigationSplitViewColumnWidth(min: 200, ideal: 224, max: 400)
+                } detail: {
+                    detailColumn
                 }
             }
         }
@@ -103,6 +79,62 @@ struct MainWindowView: View {
             }
         }
         .background(WindowConfigurator())
+    }
+
+    private func rail(selection: Binding<SidebarSection>) -> some View {
+        List(selection: selection) {
+            railItem(.profiles, "Profiles", "doc.text",
+                     help: "Switchable /etc/hosts profiles")
+            railItem(.fragments, "Fragments", "rectangle.stack",
+                     help: "Reusable host snippets you toggle per profile")
+            railItem(.sources, "Sources", "antenna.radiowaves.left.and.right",
+                     help: "Subscribed remote blocklist / hosts sources")
+        }
+        .scrollContentBackground(.hidden)
+        .toolbar(removing: .sidebarToggle)
+        .safeAreaInset(edge: .bottom) {
+            List(selection: selection) {
+                railItem(.settings, "Settings", "gearshape",
+                         help: "App preferences")
+            }
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            .frame(height: 44)
+        }
+    }
+
+    @ViewBuilder private var contentColumn: some View {
+        switch router.section {
+        case .profiles: ProfileSidebarView()
+        case .sources: SourcesView(selectedSourceID: $selectedSourceID,
+                                   onAddSource: { showingAddSource = true })
+        case .fragments: FragmentsSidebarView()
+        case .settings: EmptyView()
+        }
+    }
+
+    @ViewBuilder private var detailColumn: some View {
+        switch router.section {
+        case .profiles:
+            if let id = model.selectedProfileID {
+                ProfileEditorView(profileID: id, requestApply: { requestPreview(id) })
+            } else {
+                placeholder("No Profile Selected", "doc.text")
+            }
+        case .sources:
+            if let id = selectedSourceID, model.sources.contains(where: { $0.id == id }) {
+                SourceDetailView(sourceID: id)
+            } else {
+                placeholder("No Source Selected", "antenna.radiowaves.left.and.right")
+            }
+        case .fragments:
+            if let id = model.selectedFragmentID {
+                FragmentEditorView(fragmentID: id, requestApply: { requestPreview($0) })
+            } else if !model.fragments.isEmpty {
+                placeholder("No Fragment Selected", "rectangle.stack")
+            }
+        case .settings: EmptyView()
+        }
     }
 
     private func railItem(_ tag: SidebarSection, _ title: String,
