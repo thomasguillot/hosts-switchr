@@ -204,7 +204,11 @@
   .win, .win * { user-select: none; }
   .win button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
 
-  .win-rail { background: var(--surface-2); border-right: 1px solid var(--border); padding: 14px 12px; }
+  .win-rail { background: var(--surface-2); border-right: 1px solid var(--border); padding: 14px 12px; display: flex; flex-direction: column; }
+  /* About and Settings sit at the foot of the rail, as they do in the app. */
+  .rail-pinned { margin-top: auto; }
+  /* Those two are rail-plus-detail in the app: no list column at all. */
+  .win.util { grid-template-columns: 185px 1fr; }
   .win-rail .tl { display: flex; gap: 8px; padding: 4px 2px 22px; }
   .win-rail .tl span { width: 12px; height: 12px; border-radius: 50%; }
   .win-rail .tl .r { background: #FF5F57; } .win-rail .tl .y { background: #FEBC2E; } .win-rail .tl .g { background: #28C840; }
@@ -216,6 +220,22 @@
   .win .rail-item svg { width: 16px; height: 16px; flex: none; }
   .win .rail-item:hover:not(.sel) { background: var(--border); }
   .win .rail-item.sel { background: var(--accent); color: var(--on-accent); }
+
+  .about { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; }
+  .about img { width: 76px; height: 76px; }
+  .about h3 { margin: 0; font-size: 17px; font-weight: 640; letter-spacing: -0.01em; }
+  .about .ver { font-size: 12.5px; color: var(--muted); }
+  .about .copy { font-size: 11.5px; color: var(--faint); margin-top: 3px; }
+  .about .ghost { margin-top: 5px; }
+
+  .set { padding: 24px 26px; }
+  .set h3 { margin: 0 0 7px 2px; font-size: 12px; font-weight: 650; letter-spacing: 0.01em; color: var(--muted); }
+  .set h3 + .set-group { margin-bottom: 17px; }
+  .set-group { border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 12px; }
+  .set-row + .set-row { border-top: 1px solid var(--border); }
+  .set-pick { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); }
+  .set-pick svg { width: 10px; height: 10px; }
 
   .win-list { background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; }
   .win-list .list-title { font-size: 15px; font-weight: 700; padding: 0 4px 14px; }
@@ -355,7 +375,7 @@
   .mbdemo .mb-status:hover { background: var(--surface-2); }
   .mbdemo .mb-status.pressed { background: var(--border); }
   .mb-clock { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .mb-desktop { display: flex; justify-content: flex-end; padding: 8px 10px 20px; }
+  .mb-desktop { display: flex; justify-content: flex-end; padding: 8px; }
   .mb-menu {
     width: 232px;
     background: var(--surface);
@@ -513,6 +533,10 @@
       <button class="rail-item sel" data-view="profiles" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Profiles</button>
       <button class="rail-item" data-view="fragments" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>Fragments</button>
       <button class="rail-item" data-view="sources" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 15.5a5 5 0 0 1 0-7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.6 18.4a9 9 0 0 1 0-12.8"/><path d="M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>Sources</button>
+      <div class="rail-pinned">
+        <button class="rail-item" data-view="about" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>About</button>
+        <button class="rail-item" data-view="settings" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</button>
+      </div>
     </div>
     <div class="win-list">
       <div class="col-view" id="colProfiles">
@@ -546,8 +570,11 @@
       <div class="col-view hidden" id="colSources">
         <div class="list-title">Sources</div>
         <div class="sec-label">Built-in</div>
-        <button class="p-row s-row sel" data-s="sb" type="button"><span>StevenBlack Unified</span><span class="s-sub">Ads &amp; malware</span></button>
-        <button class="p-row s-row" data-s="sbsocial" type="button"><span>StevenBlack Social</span><span class="s-sub">Social networks</span></button>
+        <button class="p-row s-row sel" data-s="sb" type="button"><span>StevenBlack (Unified)</span><span class="s-sub">Ads &amp; malware</span></button>
+        <button class="p-row s-row" data-s="sbfake" type="button"><span>StevenBlack (Fake News)</span><span class="s-sub">Fake-news domains</span></button>
+        <button class="p-row s-row" data-s="sbgamble" type="button"><span>StevenBlack (Gambling)</span><span class="s-sub">Gambling domains</span></button>
+        <button class="p-row s-row" data-s="sbporn" type="button"><span>StevenBlack (Porn)</span><span class="s-sub">Adult domains</span></button>
+        <button class="p-row s-row" data-s="sbsocial" type="button"><span>StevenBlack (Social)</span><span class="s-sub">Social networks</span></button>
         <div class="sec-label">Your sources</div>
         <button class="p-row s-row" data-s="team" type="button"><span>Team blocklist</span><span class="s-sub">example.com</span></button>
         <button class="add-profile" type="button">Add Source</button>
@@ -589,10 +616,37 @@
       </div>
       <div class="pane hidden" id="paneSource">
         <div class="src-detail">
-          <h3 id="srcName">StevenBlack Unified</h3>
+          <h3 id="srcName">StevenBlack (Unified)</h3>
           <p class="src-url" id="srcUrl">https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts</p>
           <p class="src-meta" id="srcMeta">Refreshed 12 minutes ago · 141,118 entries</p>
           <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="pane hidden" id="paneAbout">
+        <div class="about">
+          <img src="assets/icon.png" alt="" width="76" height="76">
+          <h3>Hosts Switchr</h3>
+          <p class="ver">Version <span class="ver-num">1.2.0</span></p>
+          <button class="ghost" type="button">Check for Updates…</button>
+          <p class="copy">© 2026 Thomas Guillot</p>
+        </div>
+      </div>
+      <div class="pane hidden" id="paneSettings">
+        <div class="set">
+          <h3>General</h3>
+          <div class="set-group">
+            <div class="set-row"><span>Launch at login</span><button class="switch on" type="button" role="switch" aria-checked="true" aria-label="Launch at login"></button></div>
+            <div class="set-row"><span>Show active profile name in menu bar</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Show active profile name in menu bar"></button></div>
+          </div>
+          <h3>Sources</h3>
+          <div class="set-group">
+            <div class="set-row"><span>Refresh interval</span><span class="set-pick">Daily<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6 6 6-6"/><path d="m18 9-6-6-6 6"/></svg></span></div>
+            <div class="set-row"><span>Auto re-apply active profile after refresh</span><button class="switch on" type="button" role="switch" aria-checked="true" aria-label="Auto re-apply active profile after refresh"></button></div>
+          </div>
+          <h3>Updates</h3>
+          <div class="set-group">
+            <div class="set-row"><span>Automatically check for updates on launch</span><button class="switch on" type="button" role="switch" aria-checked="true" aria-label="Automatically check for updates on launch"></button></div>
+          </div>
         </div>
       </div>
     </div>
@@ -698,7 +752,11 @@
     .then(function (rel) {
       var dmg = (rel.assets || []).find(function (a) { return a.name.endsWith(".dmg"); });
       if (dmg) document.getElementById("download").href = dmg.browser_download_url;
-      if (rel.tag_name) document.getElementById("version").textContent = rel.tag_name.replace(/^v/, "");
+      if (rel.tag_name) {
+        var v = rel.tag_name.replace(/^v/, "");
+        document.getElementById("version").textContent = v;
+        [].forEach.call(document.querySelectorAll(".ver-num"), function (n) { n.textContent = v; });
+      }
     })
     .catch(function () { /* static fallback in the markup already works */ });
 
@@ -878,14 +936,25 @@
 
     // Rail navigation: Fragments and Sources views, mirroring the app.
     var cols = { profiles: "colProfiles", fragments: "colFragments", sources: "colSources" };
-    var panes = { profiles: "paneProfile", fragments: "paneFragment", sources: "paneSource" };
+    var panes = {
+      profiles: "paneProfile", fragments: "paneFragment", sources: "paneSource",
+      about: "paneAbout", settings: "paneSettings"
+    };
+    var winList = win.querySelector(".win-list");
     var railBtns = [].slice.call(win.querySelectorAll(".rail-item"));
     railBtns.forEach(function (b) {
       b.addEventListener("click", function () {
+        var view = b.dataset.view;
         railBtns.forEach(function (o) { o.classList.toggle("sel", o === b); });
+        // A view with no list column is one of the pinned pair: drop to two columns.
+        var twoCol = !cols[view];
+        win.classList.toggle("util", twoCol);
+        winList.classList.toggle("hidden", twoCol);
         Object.keys(cols).forEach(function (v) {
-          document.getElementById(cols[v]).classList.toggle("hidden", v !== b.dataset.view);
-          document.getElementById(panes[v]).classList.toggle("hidden", v !== b.dataset.view);
+          document.getElementById(cols[v]).classList.toggle("hidden", v !== view);
+        });
+        Object.keys(panes).forEach(function (v) {
+          document.getElementById(panes[v]).classList.toggle("hidden", v !== view);
         });
       });
     });
@@ -908,8 +977,11 @@
     document.getElementById("cancelBtn").addEventListener("click", function () { press(this); });
 
     var SRC = {
-      sb: { name: "StevenBlack Unified", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", meta: "Refreshed 12 minutes ago · 141,118 entries" },
-      sbsocial: { name: "StevenBlack Social", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts", meta: "Refreshed 12 minutes ago · 2,571 entries" },
+      sb: { name: "StevenBlack (Unified)", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", meta: "Refreshed 12 minutes ago · 141,118 entries" },
+      sbfake: { name: "StevenBlack (Fake News)", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-only/hosts", meta: "Refreshed 12 minutes ago · 2,845 entries" },
+      sbgamble: { name: "StevenBlack (Gambling)", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-only/hosts", meta: "Refreshed 12 minutes ago · 11,904 entries" },
+      sbporn: { name: "StevenBlack (Porn)", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts", meta: "Refreshed 12 minutes ago · 69,332 entries" },
+      sbsocial: { name: "StevenBlack (Social)", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts", meta: "Refreshed 12 minutes ago · 2,571 entries" },
       team: { name: "Team blocklist", url: "https://example.com/hosts.txt", meta: "Refreshed 1 hour ago · 214 entries" }
     };
     var srcRows = [].slice.call(win.querySelectorAll(".s-row"));
