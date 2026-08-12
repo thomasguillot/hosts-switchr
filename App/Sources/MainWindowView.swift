@@ -3,8 +3,6 @@ import HostsKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum SidebarSection: Hashable { case profiles, sources, fragments, settings }
-
 struct MainWindowView: View {
     @Environment(AppModel.self) private var model
     @Environment(WindowRouter.self) private var router
@@ -20,7 +18,7 @@ struct MainWindowView: View {
         @Bindable var router = router
         return Group {
             if router.section == .settings {
-                NavigationSplitView(columnVisibility: $columnVisibility) {
+                NavigationSplitView {
                     rail(selection: $router.section)
                 } detail: {
                     SettingsView()
@@ -56,14 +54,16 @@ struct MainWindowView: View {
         } message: { Text(model.lastError ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Export Config…") { exportConfig() }
-                    Button("Import Config…") { importConfig() }
-                    Divider()
-                    Button("Import Hosts File as Profile…") { importHostsFile(.profile) }
-                    Button("Import Hosts File as Fragment…") { importHostsFile(.fragment) }
-                } label: { Label("Import / Export", systemImage: "square.and.arrow.up.on.square") }
-                .help("Import or export configuration")
+                if router.section != .settings {
+                    Menu {
+                        Button("Export Config…") { exportConfig() }
+                        Button("Import Config…") { importConfig() }
+                        Divider()
+                        Button("Import Hosts File as Profile…") { importHostsFile(.profile) }
+                        Button("Import Hosts File as Fragment…") { importHostsFile(.fragment) }
+                    } label: { Label("Import / Export", systemImage: "square.and.arrow.up.on.square") }
+                    .help("Import or export configuration")
+                }
             }
         }
         .onAppear { NSApp.setActivationPolicy(.regular) }
@@ -92,6 +92,9 @@ struct MainWindowView: View {
         }
         .scrollContentBackground(.hidden)
         .toolbar(removing: .sidebarToggle)
+        // Load-bearing: each section swap builds a fresh NSSplitView, and this is what re-pins its
+        // sidebar to 174 (min == max). Without it the rail reverts to SwiftUI's resizable 140.
+        .navigationSplitViewColumnWidth(174)
         .safeAreaInset(edge: .bottom) {
             List(selection: selection) {
                 railItem(.settings, "Settings", "gearshape",
@@ -99,6 +102,7 @@ struct MainWindowView: View {
             }
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
+            // Sized for one railItem row at .title3; scrolling is off, so a taller row clips silently.
             .frame(height: 44)
         }
     }
@@ -239,9 +243,9 @@ private struct WindowConfigurator: NSViewRepresentable {
     }
 
     // NavigationSplitView draws a titlebar separator per column; suppress the window's and every split item's.
-    // SwiftUI's navigationSplitViewColumnWidth is only a preference that restored state overrides, so pin the
-    // sidebar (rail) to a fixed thickness at the AppKit layer. The managing NSSplitViewController isn't in the
-    // view-controller children tree — it's reachable via the NSSplitView's delegate.
+    // The rail width itself comes from navigationSplitViewColumnWidth; this pin only overrides restored state
+    // on the window AppKit hands us at launch. The managing NSSplitViewController isn't in the view-controller
+    // children tree — it's reachable via the NSSplitView's delegate.
     private func removeSeparators(_ window: NSWindow?) {
         guard let window else { return }
         window.titlebarSeparatorStyle = .none
