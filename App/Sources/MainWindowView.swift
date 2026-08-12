@@ -16,7 +16,6 @@ struct MainWindowView: View {
     @State private var selectedSourceID: UUID?
     @State private var showingAddSource = false
 
-    // About and Settings are rail-plus-detail; the list column has nothing to show for them.
     private var isUtilitySection: Bool { router.section == .about || router.section == .settings }
 
     var body: some View {
@@ -60,9 +59,8 @@ struct MainWindowView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if isUtilitySection {
-                    // Load-bearing, not filler: an empty toolbar is dropped entirely and the unified
-                    // toolbar is what fuses the rail full height — but macOS platters every item, so
-                    // any non-zero size renders as a hairline in the titlebar.
+                    // Load-bearing: an empty toolbar is dropped entirely and the unified toolbar fuses
+                    // the rail full height — but macOS platters every item, so non-zero draws a hairline.
                     Color.clear.frame(width: 0, height: 0)
                 } else {
                     Menu {
@@ -113,7 +111,8 @@ struct MainWindowView: View {
             }
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
-            // Sized for two railItem rows at .title3; scrolling is off, so a taller row clips silently.
+            // Sized for two railItem rows at .title3 — 32pt each plus trailing inset. Scrolling is off,
+            // so a taller row or a third utility tab clips silently; budget ~32pt more per row added.
             .frame(height: 80)
         }
     }
