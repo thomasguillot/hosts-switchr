@@ -45,18 +45,22 @@ struct MenuBarView: View {
     @ViewBuilder
     private var updateItem: some View {
         switch update.state {
-        case let .available(version, _, _):
+        case .available, .readyToInstall:
             Button {
-                Task { await update.downloadAndInstall() }
+                Task { await update.showWindowOrCheck() }
             } label: {
+                let version = update.plan.map { update.displayVersion($0.version) } ?? ""
                 Label("Update to v\(version)\u{2026}", systemImage: "arrow.down.circle.fill")
             }
         case .checking:
             Button {} label: { Label("Checking for Updates\u{2026}", systemImage: "arrow.down.circle") }
                 .disabled(true)
         case .downloading:
-            Button {} label: { Label("Downloading Update\u{2026}", systemImage: "arrow.down.circle") }
-                .disabled(true)
+            Button {
+                Task { await update.showWindowOrCheck() }
+            } label: {
+                Label("Downloading Update\u{2026}", systemImage: "arrow.down.circle")
+            }
         default:
             Button {
                 Task { await update.checkNow(userInitiated: true) }

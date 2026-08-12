@@ -5,14 +5,17 @@ struct ReleaseFetcher: Sendable {
     enum FetchError: Error { case insecureURL, badStatus(Int), tooLarge }
 
     private static let repoSlug = "thomasguillot/hosts-switchr"
-    private static let maxBytes = 1024 * 1024
+    // A page of history, not just /latest: the update window shows the notes for
+    // every release the user skipped, so it needs more than the newest one.
+    private static let pageSize = 30
+    private static let maxBytes = 2 * 1024 * 1024
 
     private let session: URLSession
 
     init(session: URLSession = .shared) { self.session = session }
 
-    func fetchLatest() async throws -> GitHubRelease {
-        let endpoint = "https://api.github.com/repos/\(Self.repoSlug)/releases/latest"
+    func fetchReleases() async throws -> [GitHubRelease] {
+        let endpoint = "https://api.github.com/repos/\(Self.repoSlug)/releases?per_page=\(Self.pageSize)"
         guard let url = URL(string: endpoint), url.scheme?.lowercased() == "https" else {
             throw FetchError.insecureURL
         }
@@ -28,6 +31,6 @@ struct ReleaseFetcher: Sendable {
         guard http.statusCode == 200 else { throw FetchError.badStatus(http.statusCode) }
         guard data.count <= Self.maxBytes else { throw FetchError.tooLarge }
 
-        return try JSONDecoder().decode(GitHubRelease.self, from: data)
+        return try JSONDecoder().decode([GitHubRelease].self, from: data)
     }
 }

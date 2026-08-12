@@ -9,6 +9,14 @@ struct Preferences {
         static let autoReapply = "autoReapply"
         static let autoCheckForUpdates = "autoCheckForUpdates"
         static let lastRefreshAt = "lastRefreshAt"
+        static let skippedUpdateVersion = "skippedUpdateVersion"
+    }
+
+    // nil = nothing skipped. Silences background update prompts up to this
+    // version only; a newer release prompts again and a manual check always does.
+    var skippedUpdateVersion: String? {
+        get { defaults.string(forKey: Keys.skippedUpdateVersion) }
+        set { defaults.set(newValue, forKey: Keys.skippedUpdateVersion) }
     }
 
     // nil = Off; defaults to 24h on first run.

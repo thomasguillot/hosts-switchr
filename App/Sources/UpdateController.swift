@@ -7,8 +7,9 @@ enum UpdateState: Equatable {
     case idle
     case checking
     case upToDate
-    case available(version: String, dmgURL: URL, size: Int)
-    case downloading
+    case available
+    case downloading(received: Int, total: Int)
+    case readyToInstall
     case failed(String)
 }
 
@@ -16,11 +17,15 @@ enum UpdateState: Equatable {
 @Observable
 final class UpdateController {
     private(set) var state: UpdateState = .idle
+    private(set) var plan: UpdatePlan?
 
     private let currentVersion: AppVersion?
     private let fetcher: ReleaseFetcher
     private let downloader: UpdateDownloader
     private let installer: UpdateInstaller
+    private var prefs = Preferences()
+    private var downloadTask: Task<Void, Never>?
+    private var downloadedDMG: URL?
 
     init(
         fetcher: ReleaseFetcher = ReleaseFetcher(),
@@ -34,6 +39,14 @@ final class UpdateController {
         self.currentVersion = bundleVersion.flatMap(AppVersion.init)
     }
 
+    var currentDisplayVersion: String { currentVersion.map(displayVersion) ?? "an unknown version" }
+
+    func displayVersion(_ version: AppVersion) -> String {
+        "\(version.major).\(version.minor).\(version.patch)"
+    }
+
+    // MARK: Check
+
     func checkNow(userInitiated: Bool) async {
         // Fail safe: an unparseable own version can't be compared, so never report a spurious update.
         guard let current = currentVersion else {
@@ -43,43 +56,105 @@ final class UpdateController {
         }
 
         state = .checking
+        let releases: [GitHubRelease]
         do {
-            let release = try await fetcher.fetchLatest()
-            switch UpdateAvailability.evaluate(current: current, release: release) {
-            case .upToDate:
-                state = .upToDate
-                if userInitiated { showUpToDate() }
-            case let .available(version, dmgURL, size):
-                state = .available(version: Self.string(version), dmgURL: dmgURL, size: size)
-                if userInitiated { promptAvailable() }
-            }
+            releases = try await fetcher.fetchReleases()
         } catch {
             state = .failed(error.localizedDescription)
-            if userInitiated {
-                showFailure(error.localizedDescription)
-            } else {
-                print("Update check failed: \(error.localizedDescription)")
+            if userInitiated { showFailure(error.localizedDescription) }
+            return
+        }
+
+        guard let plan = UpdateAvailability.plan(current: current, releases: releases) else {
+            self.plan = nil
+            state = .upToDate
+            if userInitiated { showUpToDate() }
+            return
+        }
+
+        self.plan = plan
+        state = .available
+        guard UpdatePromptGate.shouldPrompt(
+            latest: plan.version,
+            skipped: prefs.skippedUpdateVersion.flatMap(AppVersion.init),
+            interactive: userInitiated) else { return }
+        UpdateWindowController.shared.show(controller: self)
+    }
+
+    /// Menu action: reopen the window if a plan is already in hand, else check.
+    func showWindowOrCheck() async {
+        if plan != nil {
+            UpdateWindowController.shared.show(controller: self)
+            return
+        }
+        await checkNow(userInitiated: true)
+    }
+
+    // MARK: Window actions
+
+    func startDownload() {
+        guard let plan else { return }
+        downloadTask?.cancel()
+        state = .downloading(received: 0, total: plan.size)
+        downloadTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let dmg = try await downloader.downloadToTemp(
+                    dmgURL: plan.dmgURL, expectedSize: plan.size,
+                    onProgress: { received, total in
+                        Task { @MainActor [weak self] in
+                            guard let self, case .downloading = state else { return }
+                            state = .downloading(received: received, total: total)
+                        }
+                    })
+                downloadedDMG = dmg
+                state = .readyToInstall
+            } catch is CancellationError {
+                state = .available
+            } catch let error as URLError where error.code == .cancelled {
+                state = .available
+            } catch {
+                state = .failed(error.localizedDescription)
             }
         }
     }
 
-    func downloadAndInstall() async {
-        guard case let .available(version, dmgURL, size) = state else { return }
-        state = .downloading
+    func cancelDownload() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        state = .available
+    }
+
+    func installAndRelaunch() {
+        guard let dmg = downloadedDMG else { return }
         do {
-            let dmg = try await downloader.downloadToTemp(dmgURL: dmgURL, expectedSize: size)
             let installedPath = try installer.install(dmgAt: dmg)
-            confirmAndRelaunch(version: version, path: installedPath)
-            state = .idle
+            downloadedDMG = nil
+            // relaunch() terminates this instance; applicationWillTerminate flushes
+            // any pending save first, and the spawned script reopens the new copy.
+            installer.relaunch(path: installedPath)
         } catch {
             state = .failed(error.localizedDescription)
-            showFailure(error.localizedDescription)
         }
     }
 
-    private static func string(_ version: AppVersion) -> String {
-        "\(version.major).\(version.minor).\(version.patch)"
+    func skipThisVersion() {
+        if let plan { prefs.skippedUpdateVersion = displayVersion(plan.version) }
+        dismissWindow()
     }
+
+    func dismissWindow() { UpdateWindowController.shared.close() }
+
+    /// Closing the window abandons an in-flight download; the plan is kept so the
+    /// menu item can reopen without re-checking.
+    func windowClosed() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        if case .downloading = state { state = .available }
+        if case .failed = state { state = .available }
+    }
+
+    // MARK: Alerts (interactive checks only)
 
     private func activate() { NSApplication.shared.activate(ignoringOtherApps: true) }
 
@@ -88,24 +163,9 @@ final class UpdateController {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = "You're up to date"
-        let version = currentVersion.map(Self.string) ?? ""
-        alert.informativeText = "Hosts Switchr \(version) is the latest version."
+        alert.informativeText = "Hosts Switchr \(currentDisplayVersion) is the latest version."
         alert.addButton(withTitle: "OK")
         alert.runModal()
-    }
-
-    private func promptAvailable() {
-        guard case let .available(version, _, _) = state else { return }
-        activate()
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = "Update available"
-        alert.informativeText = "Hosts Switchr \(version) is available. Download it and open the disk image to install?"
-        alert.addButton(withTitle: "Download & Install")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-            Task { await downloadAndInstall() }
-        }
     }
 
     private func showFailure(_ message: String) {
@@ -116,20 +176,5 @@ final class UpdateController {
         alert.informativeText = message
         alert.addButton(withTitle: "OK")
         alert.runModal()
-    }
-
-    private func confirmAndRelaunch(version: String, path: String) {
-        activate()
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = "Update installed"
-        alert.informativeText =
-            "Hosts Switchr \(version) is installed in your Applications folder. "
-            + "It will relaunch now to finish updating."
-        alert.addButton(withTitle: "Relaunch")
-        // relaunch() terminates this instance; applicationWillTerminate flushes
-        // any pending save first, and the spawned script reopens the new copy.
-        alert.runModal()
-        installer.relaunch(path: path)
     }
 }
