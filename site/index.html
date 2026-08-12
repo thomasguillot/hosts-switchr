@@ -547,7 +547,7 @@
         <div class="list-title">Sources</div>
         <div class="sec-label">Built-in</div>
         <button class="p-row s-row sel" data-s="sb" type="button"><span>StevenBlack Unified</span><span class="s-sub">Ads &amp; malware</span></button>
-        <button class="p-row s-row" data-s="hagezi" type="button"><span>HaGeZi Pro</span><span class="s-sub">Broad blocking</span></button>
+        <button class="p-row s-row" data-s="sbsocial" type="button"><span>StevenBlack Social</span><span class="s-sub">Social networks</span></button>
         <div class="sec-label">Your sources</div>
         <button class="p-row s-row" data-s="team" type="button"><span>Team blocklist</span><span class="s-sub">example.com</span></button>
         <button class="add-profile" type="button">Add Source</button>
@@ -635,7 +635,7 @@
       </div>
       <div class="feature reveal">
         <h3>Blocklist subscriptions</h3>
-        <p>Subscribe to hosts-format lists — StevenBlack, HaGeZi, or your own URL. They refresh in the background with ETag caching.</p>
+        <p>Subscribe to hosts-format lists — the StevenBlack built-ins, or your own URL. They refresh in the background with ETag caching.</p>
       </div>
       <div class="feature reveal">
         <h3>Reusable fragments</h3>
@@ -909,7 +909,7 @@
 
     var SRC = {
       sb: { name: "StevenBlack Unified", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", meta: "Refreshed 12 minutes ago · 141,118 entries" },
-      hagezi: { name: "HaGeZi Pro", url: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.txt", meta: "Refreshed 12 minutes ago · 156,433 entries" },
+      sbsocial: { name: "StevenBlack Social", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts", meta: "Refreshed 12 minutes ago · 2,571 entries" },
       team: { name: "Team blocklist", url: "https://example.com/hosts.txt", meta: "Refreshed 1 hour ago · 214 entries" }
     };
     var srcRows = [].slice.call(win.querySelectorAll(".s-row"));

@@ -49,6 +49,14 @@ struct AppliedProfileState: Codable {
 extension AppModel {
     var canRevertActiveProfile: Bool { activeProfileID != nil && appliedState?.profile.id == activeProfileID }
 
+    // Not current if the profile changed/deleted mid-compose, so its stale badge must remain.
+    func snapshotIsCurrent(_ snapshot: Profile) -> Bool {
+        profiles.first(where: { $0.id == snapshot.id }).map {
+            $0.content == snapshot.content && $0.sourceIDs == snapshot.sourceIDs
+                && $0.fragmentIDs == snapshot.fragmentIDs
+        } ?? false
+    }
+
     // Badge basis: the fragment as saved differs from what was live at the last apply.
     func fragmentNeedsApply(_ id: UUID) -> Bool {
         guard let a = appliedState, a.profile.id == activeProfileID, a.profile.fragmentIDs.contains(id),

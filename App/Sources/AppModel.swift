@@ -60,6 +60,8 @@ final class AppModel {
                 current = "##\n# Host Database\n##\n127.0.0.1\tlocalhost\n255.255.255.255\tbroadcasthost\n::1\tlocalhost\n"
             }
             try store.seedSystemDefaultIfEmpty(currentHosts: current)
+            // A retired built-in left attached to a profile makes every apply fail on a missing source record.
+            for id in catalog.retiredBuiltinIDs { try store.removeSourceFromAllProfiles(id) }
             refresh()
             if let s = AppliedProfileState.load(from: AppliedProfileState.defaultURL),
                s.profile.id == store.activeProfileID { appliedState = s; recomputeActiveStale() }
@@ -345,9 +347,12 @@ final class AppModel {
             try fragmentStore.add(LocalFragment(id: f.id, name: f.name, content: f.content))
             summary.fragmentsAdded += 1
         }
+        let knownSourceIDs = Set(catalog.sources.map(\.id))
         for p in plan.profilesToAdd {
-            try store.add(Profile(id: p.id, name: p.name, content: p.content,
-                                  isProtected: false, sourceIDs: p.sourceIDs, fragmentIDs: p.fragmentIDs))
+            // Drop source IDs this build no longer knows (e.g. a backup naming a retired built-in) — they'd fail every apply.
+            try store.add(Profile(id: p.id, name: p.name, content: p.content, isProtected: false,
+                                  sourceIDs: p.sourceIDs.filter { knownSourceIDs.contains($0) },
+                                  fragmentIDs: p.fragmentIDs))
             summary.profilesAdded += 1
         }
     }
@@ -489,12 +494,6 @@ final class AppModel {
         cur.content = a.profile.content; cur.sourceIDs = a.profile.sourceIDs; cur.fragmentIDs = a.profile.fragmentIDs
         do { try store.update(cur) } catch { lastError = "Couldn’t revert the profile. Please try again." }
         refresh(); recomputeActiveStale()
-    }
-
-    // Not current if the profile changed/deleted mid-compose, so its stale badge must remain.
-    private func snapshotIsCurrent(_ snapshot: Profile) -> Bool {
-        profiles.first(where: { $0.id == snapshot.id })
-            .map { $0.content == snapshot.content && $0.sourceIDs == snapshot.sourceIDs && $0.fragmentIDs == snapshot.fragmentIDs } ?? false
     }
 
     func applyAsync(_ id: UUID) async {

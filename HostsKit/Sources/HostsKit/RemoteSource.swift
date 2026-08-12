@@ -65,30 +65,5 @@ public enum BuiltinSources {
             name: "StevenBlack (Social)",
             url: URL(string: "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts")!,
             kind: .builtin),
-        RemoteSource(
-            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000C1")!,
-            name: "HaGeZi Light",
-            url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/light.txt")!,
-            kind: .builtin),
-        RemoteSource(
-            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000C2")!,
-            name: "HaGeZi Normal",
-            url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt")!,
-            kind: .builtin),
-        RemoteSource(
-            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!,
-            name: "HaGeZi Pro",
-            url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.txt")!,
-            kind: .builtin),
-        RemoteSource(
-            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000C3")!,
-            name: "HaGeZi Pro++",
-            url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.plus.txt")!,
-            kind: .builtin),
-        RemoteSource(
-            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000C4")!,
-            name: "HaGeZi Ultimate",
-            url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/ultimate.txt")!,
-            kind: .builtin),
     ]
 }

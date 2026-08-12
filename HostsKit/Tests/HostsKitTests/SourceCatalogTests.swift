@@ -17,10 +17,11 @@ private func tempRoot() -> URL {
     #expect(Set(BuiltinSources.all.map(\.id)).count == BuiltinSources.all.count)
 }
 
-@Test func builtins_includeHaGeZiLadderInOrder() {
+@Test func builtins_areStevenBlackOnly() {
     let names = BuiltinSources.all.map(\.name)
-    let hagezi = names.filter { $0.hasPrefix("HaGeZi") }
-    #expect(hagezi == ["HaGeZi Light", "HaGeZi Normal", "HaGeZi Pro", "HaGeZi Pro++", "HaGeZi Ultimate"])
+    #expect(names == ["StevenBlack (Unified)", "StevenBlack (Fake News)", "StevenBlack (Gambling)",
+                      "StevenBlack (Porn)", "StevenBlack (Social)"])
+    #expect(BuiltinSources.all.allSatisfy { $0.url.host == "raw.githubusercontent.com" })
 }
 
 @Test func catalog_ordersBuiltinsCanonicallyThenCustoms() throws {
@@ -126,6 +127,38 @@ private func tempRoot() -> URL {
     #expect(c.source(for: adaway) == nil)         // AdAway removed from built-ins
     #expect(c.source(for: orphan) == nil)         // orphan built-in removed
     #expect(c.sources.filter { $0.kind == .builtin }.count == BuiltinSources.all.count)
+    #expect(Set(c.retiredBuiltinIDs) == [adaway, orphan])
+}
+
+@Test func catalog_dropsRetiredHaGeZiBuiltinsAndTheirCaches() throws {
+    let root = tempRoot()
+    try FileManager.default.createDirectory(at: AppPaths.sourcesDir(root: root), withIntermediateDirectories: true)
+    let hageziPro = UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!
+    let hageziLight = UUID(uuidString: "00000000-0000-0000-0000-0000000000C1")!
+    let legacy = [
+        RemoteSource(id: hageziPro, name: "HaGeZi Pro",
+                     url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/pro.txt")!,
+                     kind: .builtin, contentHash: "abc", domainCount: 156_433),
+        RemoteSource(id: hageziLight, name: "HaGeZi Light",
+                     url: URL(string: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/light.txt")!,
+                     kind: .builtin, contentHash: "def", domainCount: 60_000),
+    ]
+    try JSONEncoder().encode(legacy).write(to: AppPaths.sourcesMetadata(root: root))
+    let staleCaches = legacy.map {
+        AppPaths.sourcesDir(root: root).appendingPathComponent("\($0.id.uuidString).hosts", isDirectory: false)
+    }
+    for url in staleCaches { try "0.0.0.0 ads.example\n".write(to: url, atomically: true, encoding: .utf8) }
+
+    let c = try SourceCatalog(root: root)
+    #expect(c.source(for: hageziPro) == nil)
+    #expect(c.source(for: hageziLight) == nil)
+    #expect(Set(c.retiredBuiltinIDs) == [hageziPro, hageziLight])
+    for url in staleCaches { #expect(!FileManager.default.fileExists(atPath: url.path)) }
+}
+
+@Test func catalog_retiredBuiltinIDs_isEmptyForAFreshCatalog() throws {
+    let c = try SourceCatalog(root: tempRoot())
+    #expect(c.retiredBuiltinIDs.isEmpty)
 }
 
 @Test func sourceHash_isStableLowercaseHexSHA256() {
