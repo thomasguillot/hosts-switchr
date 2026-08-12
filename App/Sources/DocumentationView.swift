@@ -27,7 +27,7 @@ struct DocumentationView: View {
                 """)
 
                 section("Sources", """
-                Sources are remote blocklists you subscribe to, like StevenBlack or HaGeZi. \
+                Sources are remote blocklists you subscribe to, like StevenBlack. \
                 Toggle them per profile and refresh to pull updates. You can add your own source \
                 by URL — it must be https, and its contents are verified by checksum before use.
                 """)

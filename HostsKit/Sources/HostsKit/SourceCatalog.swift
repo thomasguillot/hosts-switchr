@@ -6,6 +6,7 @@ public final class SourceCatalog: @unchecked Sendable {
     private let lock = NSLock()
     private var _sources: [RemoteSource] = []
     private var _loadedCorruptMetadata = false
+    private var _retiredBuiltinIDs: [UUID] = []
 
     private(set) public var sources: [RemoteSource] {
         get { lock.withLock { _sources } }
@@ -13,6 +14,9 @@ public final class SourceCatalog: @unchecked Sendable {
     }
 
     public var loadedCorruptMetadata: Bool { lock.withLock { _loadedCorruptMetadata } }
+
+    // Built-ins this launch dropped because they're no longer canonical; callers must detach them from profiles.
+    public var retiredBuiltinIDs: [UUID] { lock.withLock { _retiredBuiltinIDs } }
 
     private var sourcesDir: URL { AppPaths.sourcesDir(root: root) }
     private var metadataURL: URL { AppPaths.sourcesMetadata(root: root) }
@@ -62,9 +66,13 @@ public final class SourceCatalog: @unchecked Sendable {
     private func reconcileBuiltinsLocked() throws {
         var changed = false
         let canonicalIDs = Set(BuiltinSources.all.map(\.id))
-        let beforeCount = _sources.count
-        _sources.removeAll { $0.kind == .builtin && !canonicalIDs.contains($0.id) }
-        if _sources.count != beforeCount { changed = true }
+        let retired = _sources.filter { $0.kind == .builtin && !canonicalIDs.contains($0.id) }
+        if !retired.isEmpty {
+            _sources.removeAll { s in retired.contains { $0.id == s.id } }
+            for s in retired { try? fileManager.removeItem(at: cacheURL(for: s.id)) }
+            _retiredBuiltinIDs = retired.map(\.id)
+            changed = true
+        }
         for builtin in BuiltinSources.all {
             guard let idx = _sources.firstIndex(where: { $0.id == builtin.id }) else {
                 _sources.append(builtin)
