@@ -446,10 +446,6 @@
   footer { border-top: 1px solid var(--border); padding: 40px 0 64px; text-align: center; }
   footer .links { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
   footer .fine { color: var(--faint); font-size: .84rem; margin: 0; }
-  .wink { display: none; }
-  @supports (color: AccentColor) {
-    .wink { display: block; color: var(--faint); font-size: .84rem; margin: 8px 0 0; }
-  }
 
   /* ---------- motion ---------- */
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -741,7 +737,6 @@
       <a href="https://github.com/thomasguillot/hosts-switchr/issues">Report an issue</a>
     </div>
     <p class="fine">Native macOS · Swift &amp; SwiftUI · MIT-licensed</p>
-    <p class="wink">One quiet detail: this page is tinted with your Mac's accent color. Change it in System Settings and the page follows.</p>
   </div>
 </footer>
 
