@@ -60,9 +60,10 @@ struct MainWindowView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if isUtilitySection {
-                    // Load-bearing, not filler: an empty toolbar is dropped entirely, and the
-                    // unified toolbar is what fuses the rail full height under the titlebar.
-                    Color.clear.frame(width: 1, height: 1)
+                    // Load-bearing, not filler: an empty toolbar is dropped entirely and the unified
+                    // toolbar is what fuses the rail full height — but macOS platters every item, so
+                    // any non-zero size renders as a hairline in the titlebar.
+                    Color.clear.frame(width: 0, height: 0)
                 } else {
                     Menu {
                         Button("Export Config…") { exportConfig() }
