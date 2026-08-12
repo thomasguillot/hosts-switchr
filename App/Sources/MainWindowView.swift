@@ -3,11 +3,11 @@ import HostsKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum SidebarSection: Hashable { case profiles, sources, fragments }
+private let railWidth: CGFloat = 174
 
 struct MainWindowView: View {
     @Environment(AppModel.self) private var model
-    @State private var section: SidebarSection = .profiles
+    @Environment(WindowRouter.self) private var router
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var preview: PreviewData?
     @State private var pendingApplyID: UUID?
@@ -16,47 +16,25 @@ struct MainWindowView: View {
     @State private var selectedSourceID: UUID?
     @State private var showingAddSource = false
 
+    private var isUtilitySection: Bool { router.section == .about || router.section == .settings }
+
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            List(selection: $section) {
-                railItem(.profiles, "Profiles", "doc.text",
-                         help: "Switchable /etc/hosts profiles")
-                railItem(.fragments, "Fragments", "rectangle.stack",
-                         help: "Reusable host snippets you toggle per profile")
-                railItem(.sources, "Sources", "antenna.radiowaves.left.and.right",
-                         help: "Subscribed remote blocklist / hosts sources")
-            }
-            .scrollContentBackground(.hidden)
-            .toolbar(removing: .sidebarToggle)
-        } content: {
-            Group {
-                switch section {
-                case .profiles: ProfileSidebarView()
-                case .sources: SourcesView(selectedSourceID: $selectedSourceID,
-                                           onAddSource: { showingAddSource = true })
-                case .fragments: FragmentsSidebarView()
+        @Bindable var router = router
+        return Group {
+            if isUtilitySection {
+                NavigationSplitView {
+                    rail(selection: $router.section)
+                } detail: {
+                    detailColumn
                 }
-            }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 224, max: 400)
-        } detail: {
-            switch section {
-            case .profiles:
-                if let id = model.selectedProfileID {
-                    ProfileEditorView(profileID: id, requestApply: { requestPreview(id) })
-                } else {
-                    placeholder("No Profile Selected", "doc.text")
-                }
-            case .sources:
-                if let id = selectedSourceID, model.sources.contains(where: { $0.id == id }) {
-                    SourceDetailView(sourceID: id)
-                } else {
-                    placeholder("No Source Selected", "antenna.radiowaves.left.and.right")
-                }
-            case .fragments:
-                if let id = model.selectedFragmentID {
-                    FragmentEditorView(fragmentID: id, requestApply: { requestPreview($0) })
-                } else if !model.fragments.isEmpty {
-                    placeholder("No Fragment Selected", "rectangle.stack")
+            } else {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    rail(selection: $router.section)
+                } content: {
+                    contentColumn
+                        .navigationSplitViewColumnWidth(min: 200, ideal: 224, max: 400)
+                } detail: {
+                    detailColumn
                 }
             }
         }
@@ -80,14 +58,20 @@ struct MainWindowView: View {
         } message: { Text(model.lastError ?? "") }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Export Config…") { exportConfig() }
-                    Button("Import Config…") { importConfig() }
-                    Divider()
-                    Button("Import Hosts File as Profile…") { importHostsFile(.profile) }
-                    Button("Import Hosts File as Fragment…") { importHostsFile(.fragment) }
-                } label: { Label("Import / Export", systemImage: "square.and.arrow.up.on.square") }
-                .help("Import or export configuration")
+                if isUtilitySection {
+                    // Load-bearing: an empty toolbar is dropped entirely and the unified toolbar fuses
+                    // the rail full height — but macOS platters every item, so non-zero draws a hairline.
+                    Color.clear.frame(width: 0, height: 0)
+                } else {
+                    Menu {
+                        Button("Export Config…") { exportConfig() }
+                        Button("Import Config…") { importConfig() }
+                        Divider()
+                        Button("Import Hosts File as Profile…") { importHostsFile(.profile) }
+                        Button("Import Hosts File as Fragment…") { importHostsFile(.fragment) }
+                    } label: { Label("Import / Export", systemImage: "square.and.arrow.up.on.square") }
+                    .help("Import or export configuration")
+                }
             }
         }
         .onAppear { NSApp.setActivationPolicy(.regular) }
@@ -103,6 +87,70 @@ struct MainWindowView: View {
             }
         }
         .background(WindowConfigurator())
+    }
+
+    private func rail(selection: Binding<SidebarSection>) -> some View {
+        List(selection: selection) {
+            railItem(.profiles, "Profiles", "doc.text",
+                     help: "Switchable /etc/hosts profiles")
+            railItem(.fragments, "Fragments", "rectangle.stack",
+                     help: "Reusable host snippets you toggle per profile")
+            railItem(.sources, "Sources", "antenna.radiowaves.left.and.right",
+                     help: "Subscribed remote blocklist / hosts sources")
+        }
+        .scrollContentBackground(.hidden)
+        .toolbar(removing: .sidebarToggle)
+        // Load-bearing: each swap builds a fresh NSSplitView and this re-pins its sidebar (min == max).
+        .navigationSplitViewColumnWidth(railWidth)
+        .safeAreaInset(edge: .bottom) {
+            List(selection: selection) {
+                railItem(.about, "About", "info.circle",
+                         help: "Version and updates")
+                railItem(.settings, "Settings", "gearshape",
+                         help: "App preferences")
+            }
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            // Sized for two railItem rows at .title3 — 32pt each plus trailing inset. Scrolling is off,
+            // so a taller row or a third utility tab clips silently; budget ~32pt more per row added.
+            .frame(height: 80)
+        }
+    }
+
+    @ViewBuilder private var contentColumn: some View {
+        switch router.section {
+        case .profiles: ProfileSidebarView()
+        case .sources: SourcesView(selectedSourceID: $selectedSourceID,
+                                   onAddSource: { showingAddSource = true })
+        case .fragments: FragmentsSidebarView()
+        case .about: EmptyView()
+        case .settings: EmptyView()
+        }
+    }
+
+    @ViewBuilder private var detailColumn: some View {
+        switch router.section {
+        case .profiles:
+            if let id = model.selectedProfileID {
+                ProfileEditorView(profileID: id, requestApply: { requestPreview(id) })
+            } else {
+                placeholder("No Profile Selected", "doc.text")
+            }
+        case .sources:
+            if let id = selectedSourceID, model.sources.contains(where: { $0.id == id }) {
+                SourceDetailView(sourceID: id)
+            } else {
+                placeholder("No Source Selected", "antenna.radiowaves.left.and.right")
+            }
+        case .fragments:
+            if let id = model.selectedFragmentID {
+                FragmentEditorView(fragmentID: id, requestApply: { requestPreview($0) })
+            } else if !model.fragments.isEmpty {
+                placeholder("No Fragment Selected", "rectangle.stack")
+            }
+        case .about: AboutView()
+        case .settings: SettingsView()
+        }
     }
 
     private func railItem(_ tag: SidebarSection, _ title: String,
@@ -207,9 +255,9 @@ private struct WindowConfigurator: NSViewRepresentable {
     }
 
     // NavigationSplitView draws a titlebar separator per column; suppress the window's and every split item's.
-    // SwiftUI's navigationSplitViewColumnWidth is only a preference that restored state overrides, so pin the
-    // sidebar (rail) to a fixed thickness at the AppKit layer. The managing NSSplitViewController isn't in the
-    // view-controller children tree — it's reachable via the NSSplitView's delegate.
+    // The rail width itself comes from navigationSplitViewColumnWidth; this pin only overrides restored state
+    // on the window AppKit hands us at launch. The managing NSSplitViewController isn't in the view-controller
+    // children tree — it's reachable via the NSSplitView's delegate.
     private func removeSeparators(_ window: NSWindow?) {
         guard let window else { return }
         window.titlebarSeparatorStyle = .none
@@ -218,8 +266,8 @@ private struct WindowConfigurator: NSViewRepresentable {
                 for item in controller.splitViewItems {
                     item.titlebarSeparatorStyle = .none
                     if item.behavior == .sidebar {
-                        item.minimumThickness = 174
-                        item.maximumThickness = 174
+                        item.minimumThickness = railWidth
+                        item.maximumThickness = railWidth
                     }
                 }
             }

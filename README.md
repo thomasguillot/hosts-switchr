@@ -101,7 +101,7 @@ hosts-switchr/
 │       └── …validation, scanning, login-item protocol
 └── App/               # SwiftUI macOS app — thin UI layer over HostsKit
     └── Sources/
-        ├── HostsSwitchrApp              # @main, MenuBarExtra, Window, Settings scenes
+        ├── HostsSwitchrApp              # @main, MenuBarExtra, Window scenes
         ├── AppModel                     # @Observable coordinator; owns all stores
         └── …views
 ```

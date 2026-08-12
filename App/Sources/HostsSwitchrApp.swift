@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    let router = WindowRouter()
     let updateController = UpdateController()
     lazy var updateScheduler = UpdateScheduler(controller: updateController)
 
@@ -32,25 +33,30 @@ private struct DeleteCommand: View {
     }
 }
 
-private struct AboutButton: View {
+private struct AboutMenuButton: View {
+    @Environment(\.openWindow) private var openWindow
+    let router: WindowRouter
+
     var body: some View {
         Button("About Hosts Switchr") {
             NSApplication.shared.activate(ignoringOtherApps: true)
-            NSApplication.shared.orderFrontStandardAboutPanel(options: Self.options)
+            router.section = .about
+            openWindow(id: "main")
         }
     }
+}
 
-    private static var options: [NSApplication.AboutPanelOptionKey: Any] {
-        let style = NSMutableParagraphStyle()
-        style.alignment = .center
-        let credits = NSAttributedString(
-            string: "Manage your /etc/hosts file through switchable profiles, blocklist sources, and reusable fragments.\n\nUnsigned and open-source — no Apple Developer Program required. See the Help menu to learn how it works.",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                .foregroundColor: NSColor.secondaryLabelColor,
-                .paragraphStyle: style
-            ])
-        return [.credits: credits]
+private struct SettingsMenuButton: View {
+    @Environment(\.openWindow) private var openWindow
+    let router: WindowRouter
+
+    var body: some View {
+        Button("Settings\u{2026}") {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            router.section = .settings
+            openWindow(id: "main")
+        }
+        .keyboardShortcut(",", modifiers: .command)
     }
 }
 
@@ -80,12 +86,15 @@ struct HostsSwitchrApp: App {
             MainWindowView()
                 .frame(minWidth: 640, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
                 .environment(appDelegate.model)
+                .environment(appDelegate.router)
+                .environment(appDelegate.updateController)
         }
         .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: Self.defaultWindowSize.width, height: Self.defaultWindowSize.height)
         .windowResizability(.contentMinSize)
         .commands {
-            CommandGroup(replacing: .appInfo) { AboutButton() }
+            CommandGroup(replacing: .appInfo) { AboutMenuButton(router: appDelegate.router) }
+            CommandGroup(replacing: .appSettings) { SettingsMenuButton(router: appDelegate.router) }
             CommandGroup(after: .pasteboard) { DeleteCommand() }
             CommandGroup(replacing: .help) { HelpMenuButton() }
         }
@@ -98,13 +107,11 @@ struct HostsSwitchrApp: App {
         MenuBarExtra {
             MenuBarView()
                 .environment(appDelegate.model)
+                .environment(appDelegate.router)
                 .environment(appDelegate.updateController)
         } label: {
             MenuBarLabel().environment(appDelegate.model)
         }
         .menuBarExtraStyle(.menu)
-        Settings {
-            SettingsView().environment(appDelegate.model)
-        }
     }
 }
