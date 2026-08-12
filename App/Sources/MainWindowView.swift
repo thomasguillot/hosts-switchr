@@ -3,6 +3,8 @@ import HostsKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+private let railWidth: CGFloat = 174
+
 struct MainWindowView: View {
     @Environment(AppModel.self) private var model
     @Environment(WindowRouter.self) private var router
@@ -63,6 +65,10 @@ struct MainWindowView: View {
                         Button("Import Hosts File as Fragment…") { importHostsFile(.fragment) }
                     } label: { Label("Import / Export", systemImage: "square.and.arrow.up.on.square") }
                     .help("Import or export configuration")
+                } else {
+                    // Load-bearing, not filler: an empty toolbar is dropped entirely, and the
+                    // unified toolbar is what fuses the rail full height under the titlebar.
+                    Color.clear.frame(width: 1, height: 1)
                 }
             }
         }
@@ -92,9 +98,8 @@ struct MainWindowView: View {
         }
         .scrollContentBackground(.hidden)
         .toolbar(removing: .sidebarToggle)
-        // Load-bearing: each section swap builds a fresh NSSplitView, and this is what re-pins its
-        // sidebar to 174 (min == max). Without it the rail reverts to SwiftUI's resizable 140.
-        .navigationSplitViewColumnWidth(174)
+        // Load-bearing: each swap builds a fresh NSSplitView and this re-pins its sidebar (min == max).
+        .navigationSplitViewColumnWidth(railWidth)
         .safeAreaInset(edge: .bottom) {
             List(selection: selection) {
                 railItem(.settings, "Settings", "gearshape",
@@ -254,8 +259,8 @@ private struct WindowConfigurator: NSViewRepresentable {
                 for item in controller.splitViewItems {
                     item.titlebarSeparatorStyle = .none
                     if item.behavior == .sidebar {
-                        item.minimumThickness = 174
-                        item.maximumThickness = 174
+                        item.minimumThickness = railWidth
+                        item.maximumThickness = railWidth
                     }
                 }
             }
