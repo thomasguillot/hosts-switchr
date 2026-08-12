@@ -27,6 +27,7 @@ private final class DownloadBodyDelegate: NSObject, URLSessionDataDelegate, @unc
     private let fileHandle: FileHandle
     private let maxBytes: Int
     private let expectedSize: Int
+    private let onProgress: @Sendable (Int, Int) -> Void
     // Lock-free by URLSession ordering: the response disposition returns before any body chunk,
     // and completion fires after the last chunk — so these are never touched concurrently.
     private var received = 0
@@ -40,12 +41,14 @@ private final class DownloadBodyDelegate: NSObject, URLSessionDataDelegate, @unc
         redirectGuard: DownloadRedirectGuard,
         fileHandle: FileHandle,
         maxBytes: Int,
-        expectedSize: Int
+        expectedSize: Int,
+        onProgress: @escaping @Sendable (Int, Int) -> Void
     ) {
         self.redirectGuard = redirectGuard
         self.fileHandle = fileHandle
         self.maxBytes = maxBytes
         self.expectedSize = expectedSize
+        self.onProgress = onProgress
     }
 
     func waitForCompletion() async throws {
@@ -113,7 +116,9 @@ private final class DownloadBodyDelegate: NSObject, URLSessionDataDelegate, @unc
             // didCompleteWithError owns the single fileHandle.close(); don't close it here.
             errorFlag = error
             dataTask.cancel()
+            return
         }
+        onProgress(received, expectedSize)
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -163,7 +168,10 @@ struct UpdateDownloader: Sendable {
     /// Streams the verified `.dmg` to a unique temp file and returns its path.
     /// The caller (UpdateInstaller) mounts and installs from it. Every https,
     /// size, and content-type guard runs before any byte is written.
-    func downloadToTemp(dmgURL: URL, expectedSize: Int) async throws -> URL {
+    func downloadToTemp(
+        dmgURL: URL, expectedSize: Int,
+        onProgress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }
+    ) async throws -> URL {
         // Fail closed: never download over a non-https URL.
         guard dmgURL.scheme?.lowercased() == "https" else { throw DownloadError.insecureURL }
         // Reject the advertised size before issuing any network request.
@@ -180,7 +188,7 @@ struct UpdateDownloader: Sendable {
         let redirectGuard = DownloadRedirectGuard()
         let delegate = DownloadBodyDelegate(
             redirectGuard: redirectGuard, fileHandle: fileHandle, maxBytes: Self.maxBytes,
-            expectedSize: expectedSize)
+            expectedSize: expectedSize, onProgress: onProgress)
         let task = session.dataTask(with: request)
         task.delegate = delegate
         task.resume()
