@@ -39,7 +39,7 @@ final class UpdateController {
         self.currentVersion = bundleVersion.flatMap(AppVersion.init)
     }
 
-    var currentDisplayVersion: String { currentVersion.map(displayVersion) ?? "an unknown version" }
+    var currentDisplayVersion: String { currentVersion.map(displayVersion) ?? "unknown" }
 
     func displayVersion(_ version: AppVersion) -> String {
         "\(version.major).\(version.minor).\(version.patch)"

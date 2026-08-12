@@ -17,7 +17,7 @@ struct AboutView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Button("Check for Updates…") {
-                Task { await update.checkNow(userInitiated: true) }
+                Task { await update.showWindowOrCheck() }
             }
             .padding(.top, 6)
             Text("© \(year) Thomas Guillot")
