@@ -1,3 +1,5 @@
+<img src="site/assets/icon.png" alt="" width="96" height="96">
+
 # Hosts Switchr
 
 A native macOS menu-bar app for managing `/etc/hosts` through switchable profiles.
@@ -43,7 +45,7 @@ If you don't have a prebuilt app, build it from source — see [For developers](
 
 New to it? See **Help → Hosts Switchr Help** for a built-in guide.
 
-Your data lives in `~/Library/Application Support/HostsSwitchr/`. `/etc/hosts` is only ever changed when you click **Apply**.
+Your data lives in `~/Library/Application Support/Hosts Switchr/`. `/etc/hosts` is only ever changed when you click **Apply**.
 
 ---
 
@@ -83,7 +85,7 @@ cd App && xcodegen && xcodebuild \
 ./scripts/make-dmg.sh
 ```
 
-Builds the Release configuration and produces `dist/HostsSwitchr-<version>.dmg`, a drag-to-Applications disk image. The version comes from `MARKETING_VERSION` in `App/project.yml`. Requires `create-dmg` (`brew install create-dmg`).
+Builds the Release configuration and produces `dist/Hosts-Switchr-<version>.dmg`, a drag-to-Applications disk image. The version comes from `MARKETING_VERSION` in `App/project.yml`. Requires `create-dmg` (`brew install create-dmg`).
 
 ### Architecture
 
@@ -108,7 +110,7 @@ hosts-switchr/
 
 **Key invariants:**
 
-- All persistent state lives in `~/Library/Application Support/HostsSwitchr/`.
+- All persistent state lives in `~/Library/Application Support/Hosts Switchr/`.
 - Writes to `/etc/hosts` go through a unique-named temp file → `cp` via `osascript` (no helper daemon, no signing required); the merged content is never interpolated into the shell command.
 - Remote sources require `https://`; imported URLs go through the same `SourceURLPolicy` guard.
 - Fail-closed everywhere: corrupt store files are preserved to a `.corrupt` path before any overwrite.

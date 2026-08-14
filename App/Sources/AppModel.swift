@@ -20,6 +20,7 @@ final class AppModel {
     private var fragmentStore: FragmentStore?
     private var fragmentSaveTask: Task<Void, Never>?
     private var pendingFragmentSave: LocalFragment?
+    private let supportRoot: URL
     private let applier: HostsApplier
     private let runner: AuthorizationPrivilegedRunner
     private let composer = MergedHostsComposer()
@@ -32,7 +33,8 @@ final class AppModel {
 
     init() {
         self.runner = AuthorizationPrivilegedRunner()
-        self.applier = HostsApplier(runner: runner, backupsDir: AppPaths.backupsDir())
+        self.supportRoot = AppPaths.resolveSupportRoot()
+        self.applier = HostsApplier(runner: runner, backupsDir: AppPaths.backupsDir(root: supportRoot))
         self.fetcher = SourceFetcher()
     }
 
@@ -40,7 +42,7 @@ final class AppModel {
         if didBootstrap { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
         do {
-            let root = AppPaths.supportRoot()
+            let root = supportRoot
             let store = try ProfileStore(root: root)
             let catalog = try SourceCatalog(root: root)
             self.store = store
@@ -63,7 +65,7 @@ final class AppModel {
             // A retired built-in left attached to a profile makes every apply fail on a missing source record.
             for id in catalog.retiredBuiltinIDs { try store.removeSourceFromAllProfiles(id) }
             refresh()
-            if let s = AppliedProfileState.load(from: AppliedProfileState.defaultURL),
+            if let s = AppliedProfileState.load(from: AppliedProfileState.url(root: supportRoot)),
                s.profile.id == store.activeProfileID { appliedState = s; recomputeActiveStale() }
             if scheduler == nil {
                 let s = RefreshScheduler(model: self); s.start(); self.scheduler = s
@@ -507,7 +509,7 @@ final class AppModel {
         }
         // Commit point: a later metadata-save failure must not be reported as an apply failure.
         store.setActive(id)
-        appliedState = snap; snap.save(to: AppliedProfileState.defaultURL)
+        appliedState = snap; snap.save(to: AppliedProfileState.url(root: supportRoot))
         if snapshotIsCurrent(p) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(id) }
 
         do { try store.save() } catch {
@@ -566,7 +568,7 @@ final class AppModel {
                     do {
                         let snap = AppliedProfileState.capture(active, fragments: fragments, sources: sources)
                         let outcome = try await composeAndApply(active)
-                        appliedState = snap; snap.save(to: AppliedProfileState.defaultURL)
+                        appliedState = snap; snap.save(to: AppliedProfileState.url(root: supportRoot))
                         if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
                         notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists")
                     } catch {

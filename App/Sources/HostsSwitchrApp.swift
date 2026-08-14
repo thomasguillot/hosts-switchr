@@ -9,9 +9,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var updateScheduler = UpdateScheduler(controller: updateController)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        unhideOwnBundle()
         // The main window is suppressed, so bootstrap here to load/schedule on a quiet login-launch.
         model.bootstrap()
         updateScheduler.start()
+    }
+
+    // The DMG's pre-1.3.0 compatibility copy carries the hidden flag, and ditto preserves it, so an
+    // updater older than the rename installs an app that Finder won't show. Clear it on ourselves.
+    private func unhideOwnBundle() {
+        var url = Bundle.main.bundleURL
+        guard (try? url.resourceValues(forKeys: [.isHiddenKey]))?.isHidden == true else { return }
+        var values = URLResourceValues()
+        values.isHidden = false
+        try? url.setResourceValues(values)
     }
 
     func applicationDidResignActive(_ notification: Notification) {

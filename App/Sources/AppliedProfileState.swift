@@ -9,8 +9,8 @@ struct AppliedProfileState: Codable {
     let fragmentContents: [UUID: String]
     let sourceHashes: [UUID: String]
 
-    static var defaultURL: URL {
-        AppPaths.supportRoot().appendingPathComponent("appliedstate.json", isDirectory: false)
+    static func url(root: URL) -> URL {
+        root.appendingPathComponent("appliedstate.json", isDirectory: false)
     }
 
     static func capture(_ profile: Profile, fragments: [LocalFragment],

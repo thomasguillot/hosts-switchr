@@ -15,7 +15,7 @@ struct UpdateInstaller {
         var errorDescription: String? {
             switch self {
             case .missingApp:
-                return "The update disk image doesn't contain HostsSwitchr.app."
+                return "The update disk image doesn't contain Hosts Switchr."
             case let .commandFailed(detail):
                 return detail
             }
@@ -24,8 +24,10 @@ struct UpdateInstaller {
 
     // Hardcoded /Applications (not the running bundle path) so an app launched
     // from a translocated or read-only location still installs correctly.
-    private let appName = "HostsSwitchr.app"
-    private let installedPath = "/Applications/HostsSwitchr.app"
+    private let appName = "Hosts Switchr.app"
+    private let installedPath = "/Applications/Hosts Switchr.app"
+    // Installs made before the 1.3.0 rename live here; cleared once the new path is in place.
+    private let legacyInstalledPath = "/Applications/HostsSwitchr.app"
 
     /// Mounts the image, copies the app into /Applications, strips quarantine,
     /// and returns the installed path. Does not relaunch — the caller confirms,
@@ -49,6 +51,10 @@ struct UpdateInstaller {
         // Downloaded apps carry com.apple.quarantine; strip it or Gatekeeper
         // re-blocks the relaunch.
         try? shell("/usr/bin/xattr", ["-dr", "com.apple.quarantine", installedPath])
+        // Only after the new bundle is safely in place, so a failed install never leaves the user with neither.
+        if installedPath != legacyInstalledPath {
+            try? FileManager.default.removeItem(atPath: legacyInstalledPath)
+        }
 
         try? shell("/usr/bin/hdiutil", ["detach", mountPoint.path, "-force"])
         detached = true

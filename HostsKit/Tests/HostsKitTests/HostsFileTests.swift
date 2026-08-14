@@ -46,5 +46,5 @@ import Testing
     #expect(AppPaths.profilesDir().path.hasPrefix(root.path))
     #expect(AppPaths.backupsDir().path.hasPrefix(root.path))
     #expect(AppPaths.profilesMetadata().path.hasPrefix(root.path))
-    #expect(root.lastPathComponent == "HostsSwitchr")
+    #expect(root.lastPathComponent == "Hosts Switchr")
 }
