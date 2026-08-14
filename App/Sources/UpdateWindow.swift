@@ -24,7 +24,7 @@ final class UpdateWindowController: NSObject, NSWindowDelegate {
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered, defer: false)
-        window.title = "Software Update"
+        window.title = String(localized: "Software Update")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
@@ -78,9 +78,9 @@ struct UpdateWindowView: View {
     }
 
     private var subtitle: String {
-        let available = update.plan.map { "Hosts Switchr \(update.displayVersion($0.version)) is available" }
-            ?? "An update is available"
-        return "\(available) — you have \(update.currentDisplayVersion)."
+        let available = update.plan.map { String(localized: "Hosts Switchr \(update.displayVersion($0.version)) is available") }
+            ?? String(localized: "An update is available")
+        return String(localized: "\(available) — you have \(update.currentDisplayVersion).")
     }
 
     private var notes: some View {
@@ -162,7 +162,7 @@ struct UpdateWindowView: View {
         formatter.allowsNonnumericFormatting = false
         let got = formatter.string(fromByteCount: Int64(received))
         guard total > 0 else { return got }
-        return "\(got) of \(formatter.string(fromByteCount: Int64(total)))"
+        return String(localized: "\(got) of \(formatter.string(fromByteCount: Int64(total)))")
     }
 }
 

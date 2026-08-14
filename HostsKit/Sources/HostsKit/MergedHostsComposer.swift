@@ -5,8 +5,9 @@ public enum ComposeError: Error, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case let .cacheHashMismatch(name):
-            return "Can't apply — the cached copy of \"\(name)\" doesn't match its verified checksum "
-                + "(it may be corrupted or was modified). Refresh that source and try again."
+            return String(localized: "error.cacheHashMismatch",
+                          defaultValue: "Can't apply — the cached copy of \"\(name)\" doesn't match its verified checksum (it may be corrupted or was modified). Refresh that source and try again.",
+                          bundle: .hostsKit)
         }
     }
 }

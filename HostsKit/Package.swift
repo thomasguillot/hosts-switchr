@@ -3,12 +3,13 @@ import PackageDescription
 
 let package = Package(
     name: "HostsKit",
+    defaultLocalization: "en",
     platforms: [.macOS("26.0")],
     products: [
         .library(name: "HostsKit", targets: ["HostsKit"]),
     ],
     targets: [
-        .target(name: "HostsKit"),
+        .target(name: "HostsKit", resources: [.process("Localizable.xcstrings")]),
         .testTarget(name: "HostsKitTests", dependencies: ["HostsKit"]),
     ]
 )

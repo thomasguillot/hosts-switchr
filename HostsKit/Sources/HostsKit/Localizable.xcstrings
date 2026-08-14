@@ -1,0 +1,30 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "error.cacheHashMismatch" : {
+      "comment" : "Shown when a cached blocklist file fails its SHA-256 integrity check. %@ is the source name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't apply — the cached copy of \"%@\" doesn't match its verified checksum (it may be corrupted or was modified). Refresh that source and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No se puede aplicar: la copia en caché de «%@» no coincide con su suma de verificación (puede estar dañada o haberse modificado). Actualiza esa fuente e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossible d'appliquer : la copie en cache de « %@ » ne correspond pas à sa somme de contrôle vérifiée (elle est peut-être corrompue ou a été modifiée). Actualisez cette source, puis réessayez."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

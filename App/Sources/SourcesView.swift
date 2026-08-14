@@ -70,12 +70,12 @@ struct SourcesView: View {
 
     private func subtitle(_ s: RemoteSource) -> String {
         var parts: [String] = []
-        if let n = s.domainCount { parts.append("\(n) domains") }
+        if let n = s.domainCount { parts.append(Localized.domains(n)) }
         if let t = s.lastFetchedAt {
             let f = RelativeDateTimeFormatter()
-            parts.append("updated \(f.localizedString(for: t, relativeTo: Date()))")
+            parts.append(String(localized: "updated \(f.localizedString(for: t, relativeTo: Date()))"))
         } else {
-            parts.append("never fetched")
+            parts.append(String(localized: "never fetched"))
         }
         return parts.joined(separator: " · ")
     }
