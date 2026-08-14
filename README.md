@@ -20,6 +20,7 @@ A native macOS menu-bar app for managing `/etc/hosts` through switchable profile
 - **Stale-aware apply** — profiles, fragments, and sources show a "needs re-apply" badge when your edits differ from what's live in `/etc/hosts`, and each editor has **Cancel** to revert unapplied changes back to the applied state.
 - **Drag-to-reorder** — reorder profiles, sources, and fragments directly in the sidebars.
 - **Import / export** — back up your whole setup to a JSON file, restore it on another machine, or import a plain hosts file as a profile or fragment.
+- **Four languages** — English (US and UK), French and Spanish, following your macOS language setting. Change it per app in **System Settings → General → Language & Region**.
 - **Launch at login & updates** — runs quietly as a menu-bar-only app (no Dock icon), can optionally show the active profile name next to the menu-bar icon, and checks GitHub Releases for new versions — installing them in place and relaunching, no drag-and-drop.
 
 ### Install
@@ -86,6 +87,17 @@ cd App && xcodegen && xcodebuild \
 ```
 
 Builds the Release configuration and produces `dist/Hosts-Switchr-<version>.dmg`, a drag-to-Applications disk image. The version comes from `MARKETING_VERSION` in `App/project.yml`. Requires `create-dmg` (`brew install create-dmg`).
+
+### Localization
+
+Strings live in String Catalogs (`Localizable.xcstrings`) in both targets. After adding or changing a user-facing string:
+
+```sh
+./scripts/sync-localizations.py          # sync keys, mirror en → en-GB
+./scripts/sync-localizations.py --check  # fails if anything is untranslated
+```
+
+`xcodebuild` doesn't write back to a String Catalog (that's an Xcode IDE behaviour), so the script reads the compiler's `.stringsdata` to catch strings that would otherwise ship as untranslated English. See [`AGENTS.md`](AGENTS.md) for the rest.
 
 ### Architecture
 

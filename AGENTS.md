@@ -64,6 +64,41 @@ cd /path/to/hosts-switchr && swiftlint lint --quiet
 
 Running SwiftLint from `App/` uses the wrong config and produces false violations. Always run from the repo root. The build phase already does this via `cd "$SRCROOT/.."`.
 
+## Localization
+
+Four languages: `en` (development language, US spellings), `en-GB`, `fr`, `es`. Strings live in
+String Catalogs — `App/Sources/Localizable.xcstrings` and `HostsKit/Sources/HostsKit/Localizable.xcstrings`.
+
+After adding or changing any user-facing string:
+
+```sh
+./scripts/sync-localizations.py          # add new keys, drop stale ones, mirror en → en-GB
+./scripts/sync-localizations.py --check  # report only, non-zero exit if anything is untranslated
+```
+
+Hard-won details, don't re-derive them:
+
+- **`xcodebuild` never writes back to a String Catalog.** Merging extracted keys into the catalog is
+  an Xcode *IDE* behaviour. A headless build silently leaves new strings out and they ship as
+  untranslated English. The script reads the compiler's `.stringsdata` instead, which is the same
+  extraction the IDE uses. This is why the check script exists.
+- **SwiftPM does not compile `.xcstrings`.** `swift build` copies the catalog into the resource
+  bundle verbatim; only Xcode produces `.lproj/.strings`. So under `swift test` every HostsKit
+  lookup falls back to its `defaultValue`, and a test asserting a French string can never pass
+  there. Test the English copy in Swift; let the check script guarantee the other languages.
+- **`Text(someString)` does not localize.** Only the `LocalizedStringKey` overload does. A helper
+  typed `(_ title: String)` silently bypasses the catalog — that's how the Help window's prose was
+  missed at first. Type view helpers as `LocalizedStringKey`.
+- **`String(localized:)` is required for anything not going through SwiftUI**: `lastError`,
+  `errorDescription`, and every `NSAlert` message/button title.
+- **`en-GB` is a mirror of `en`.** Nothing in the current copy differs between US and UK English, so
+  mirroring is what makes the app actually advertise English (UK) instead of falling back silently.
+  To diverge a string, add its key to `EN_GB_OVERRIDES` in the script and it will be left alone.
+- **Plurals:** never "(s)". The catalog carries plural variations; `Localized.swift` holds the
+  counted phrases so each is one pluralized key.
+- **Not translated:** the name "Hosts Switchr", the backup filename, release notes, the site.
+- French and Spanish are marked `needs_review` — they have not had a native-speaker pass.
+
 ## SourceKit diagnostics after xcodegen — always false alarms
 
 After `xcodegen` regenerates the project, SourceKit's index goes stale and reports errors like:

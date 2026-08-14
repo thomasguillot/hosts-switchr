@@ -199,11 +199,11 @@ struct MainWindowView: View {
         do { data = try Data(contentsOf: url) }
         catch { model.lastError = "Couldn't read backup: \(error.localizedDescription)"; return }
         let alert = NSAlert()
-        alert.messageText = "Import configuration"
-        alert.informativeText = "Merge adds items from the backup without touching what you have. Replace removes your current profiles, fragments, and custom sources first (System Default and built-in sources are kept)."
-        alert.addButton(withTitle: "Merge")
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Import configuration")
+        alert.informativeText = String(localized: "Merge adds items from the backup without touching what you have. Replace removes your current profiles, fragments, and custom sources first (System Default and built-in sources are kept).")
+        alert.addButton(withTitle: String(localized: "Merge"))
+        alert.addButton(withTitle: String(localized: "Replace"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         let response = alert.runModal()
         let mode: ConfigBundle.ImportMode
         switch response {
@@ -224,11 +224,13 @@ struct MainWindowView: View {
     }
 
     private func summaryMessage(_ s: AppModel.ImportSummary) -> String {
-        var parts = ["Added \(s.profilesAdded) profile(s), \(s.fragmentsAdded) fragment(s), \(s.sourcesAdded) source(s)."]
+        var parts = [Localized.profilesAdded(s.profilesAdded),
+                     Localized.fragmentsAdded(s.fragmentsAdded),
+                     Localized.sourcesAdded(s.sourcesAdded)]
         if !s.warnings.isEmpty {
-            parts.append("Skipped insecure (non-https) sources: \(s.warnings.joined(separator: ", ")).")
+            parts.append(String(localized: "Skipped insecure (non-https) sources: \(s.warnings.joined(separator: ", "))."))
         }
-        if s.skipped > 0 { parts.append("Skipped \(s.skipped) item(s) already present.") }
+        if s.skipped > 0 { parts.append(Localized.alreadyPresent(s.skipped)) }
         return parts.joined(separator: "\n")
     }
 

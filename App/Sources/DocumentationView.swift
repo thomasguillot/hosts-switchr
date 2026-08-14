@@ -53,7 +53,8 @@ struct DocumentationView: View {
         .onAppear { NSApplication.shared.activate(ignoringOtherApps: true) }
     }
 
-    private func section(_ title: String, _ body: String) -> some View {
+    // LocalizedStringKey, not String: the String overload of Text bypasses the catalog entirely.
+    private func section(_ title: LocalizedStringKey, _ body: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.headline)

@@ -162,9 +162,9 @@ final class UpdateController {
         activate()
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "You're up to date"
-        alert.informativeText = "Hosts Switchr \(currentDisplayVersion) is the latest version."
-        alert.addButton(withTitle: "OK")
+        alert.messageText = String(localized: "You're up to date")
+        alert.informativeText = String(localized: "Hosts Switchr \(currentDisplayVersion) is the latest version.")
+        alert.addButton(withTitle: String(localized: "OK"))
         alert.runModal()
     }
 
@@ -172,9 +172,9 @@ final class UpdateController {
         activate()
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Update check failed"
+        alert.messageText = String(localized: "Update check failed")
         alert.informativeText = message
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK"))
         alert.runModal()
     }
 }

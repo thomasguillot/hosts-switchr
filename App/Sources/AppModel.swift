@@ -50,15 +50,15 @@ final class AppModel {
             let fragmentStore = try FragmentStore(root: root)
             self.fragmentStore = fragmentStore
             if store.loadedCorruptMetadata {
-                lastError = "Your saved profile list was unreadable and has been set aside as profiles.json.corrupt. Profiles were recovered from disk with default names/order; rename and reorder as needed."
+                lastError = String(localized: "Your saved profile list was unreadable and has been set aside as profiles.json.corrupt. Profiles were recovered from disk with default names/order; rename and reorder as needed.")
             } else if catalog.loadedCorruptMetadata {
-                lastError = "Your saved sources list was unreadable and has been set aside as sources.json.corrupt. Built-in sources were restored; re-add any custom sources."
+                lastError = String(localized: "Your saved sources list was unreadable and has been set aside as sources.json.corrupt. Built-in sources were restored; re-add any custom sources.")
             } else if fragmentStore.loadedCorruptMetadata {
-                lastError = "Your saved fragment list was unreadable and has been set aside as fragments.json.corrupt. Recreate any local fragments as needed."
+                lastError = String(localized: "Your saved fragment list was unreadable and has been set aside as fragments.json.corrupt. Recreate any local fragments as needed.")
             }
             let current: String
             do { current = try String(contentsOfFile: "/etc/hosts", encoding: .utf8) } catch {
-                lastError = "Couldn't read /etc/hosts (\(error.localizedDescription)); seeding a default."
+                lastError = String(localized: "Couldn't read /etc/hosts (\(error.localizedDescription)); seeding a default.")
                 current = "##\n# Host Database\n##\n127.0.0.1\tlocalhost\n255.255.255.255\tbroadcasthost\n::1\tlocalhost\n"
             }
             try store.seedSystemDefaultIfEmpty(currentHosts: current)
@@ -72,7 +72,7 @@ final class AppModel {
             }
             didBootstrap = true   // set only on full success, so a seed/load failure remains retryable
         } catch {
-            lastError = "Couldn’t load your saved profiles. Please reopen the app, and if this keeps happening, restart your Mac."
+            lastError = String(localized: "Couldn’t load your saved profiles. Please reopen the app, and if this keeps happening, restart your Mac.")
         }
     }
 
@@ -112,7 +112,7 @@ final class AppModel {
             selectedProfileID = profile.id
             return profile.id
         } catch {
-            lastError = "Something went wrong saving that change. Please try again."
+            lastError = String(localized: "Something went wrong saving that change. Please try again.")
             return nil
         }
     }
@@ -126,8 +126,8 @@ final class AppModel {
     func rename(_ id: UUID, to name: String) {
         guard let store else { return }
         do { try store.rename(id, to: name); refresh() }
-        catch ProfileError.duplicateName { lastError = "The name “\(name)” is already taken. Please choose a different name." }
-        catch { lastError = "Something went wrong saving that change. Please try again." }
+        catch ProfileError.duplicateName { lastError = String(localized: "The name “\(name)” is already taken. Please choose a different name.") }
+        catch { lastError = String(localized: "Something went wrong saving that change. Please try again.") }
     }
 
     func deleteSelected() {
@@ -164,7 +164,7 @@ final class AppModel {
     @discardableResult
     private func persist(_ profile: Profile) -> Bool {
         guard let store else { return false }
-        do { try store.update(profile); return true } catch { lastError = "Couldn’t save your changes. Please try again."; return false }
+        do { try store.update(profile); return true } catch { lastError = String(localized: "Couldn’t save your changes. Please try again."); return false }
     }
 
     func flushPendingSave() {
@@ -191,14 +191,14 @@ final class AppModel {
         guard let store else { return }
         var ids = profiles.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try store.reorder(ids); refresh() }
-        catch { lastError = "Couldn’t reorder the profiles. Please try again." }
+        catch { lastError = String(localized: "Couldn’t reorder the profiles. Please try again.") }
     }
 
     func moveCustomSources(fromOffsets source: IndexSet, toOffset destination: Int) {
         guard let catalog else { return }
         var ids = sources.filter { $0.kind == .custom }.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try catalog.reorderCustoms(ids); refresh() }
-        catch { lastError = "Couldn’t reorder the sources. Please try again." }
+        catch { lastError = String(localized: "Couldn’t reorder the sources. Please try again.") }
     }
 
     // MARK: Fragments
@@ -207,14 +207,14 @@ final class AppModel {
     func createFragment() -> UUID? {
         guard let fragmentStore else { return nil }
         do { let f = try fragmentStore.create(name: "untitled fragment", content: ""); refresh(); selectedFragmentID = f.id; return f.id }
-        catch { lastError = "Couldn’t create the fragment. Please try again."; return nil }
+        catch { lastError = String(localized: "Couldn’t create the fragment. Please try again."); return nil }
     }
 
     func renameFragment(_ id: UUID, to name: String) {
         guard let fragmentStore else { return }
         do { try fragmentStore.rename(id, to: name); refresh() }
-        catch ProfileError.duplicateName { lastError = "The name “\(name)” is already taken. Please choose a different name." }
-        catch { lastError = "Couldn’t rename the fragment. Please try again." }
+        catch ProfileError.duplicateName { lastError = String(localized: "The name “\(name)” is already taken. Please choose a different name.") }
+        catch { lastError = String(localized: "Couldn’t rename the fragment. Please try again.") }
     }
 
     func deleteFragment(_ id: UUID) {
@@ -225,7 +225,7 @@ final class AppModel {
         do {
             try store.removeFragmentFromAllProfiles(id)
             try fragmentStore.delete(id)
-        } catch { lastError = "Couldn’t delete the fragment. Please try again." }
+        } catch { lastError = String(localized: "Couldn’t delete the fragment. Please try again.") }
         if selectedFragmentID == id { selectedFragmentID = nil }
         refresh()
         if let activeID = activeProfileID, affected.contains(activeID) { recomputeActiveStale() }
@@ -235,7 +235,7 @@ final class AppModel {
         guard let fragmentStore else { return }
         var ids = fragments.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try fragmentStore.reorder(ids); refresh() }
-        catch { lastError = "Couldn’t reorder the fragments. Please try again." }
+        catch { lastError = String(localized: "Couldn’t reorder the fragments. Please try again.") }
     }
 
     func warningsForFragment(_ id: UUID) -> [HostsWarning] {
@@ -269,7 +269,7 @@ final class AppModel {
     @discardableResult
     private func persistFragment(_ fragment: LocalFragment) -> Bool {
         guard let fragmentStore else { return false }
-        do { try fragmentStore.update(fragment); return true } catch { lastError = "Couldn’t save your changes. Please try again."; return false }
+        do { try fragmentStore.update(fragment); return true } catch { lastError = String(localized: "Couldn’t save your changes. Please try again."); return false }
     }
 
     func flushPendingFragmentSave() {
@@ -304,7 +304,7 @@ final class AppModel {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         do { return try encoder.encode(bundle) }
-        catch { lastError = "Couldn't create backup: \(error.localizedDescription)"; return nil }
+        catch { lastError = String(localized: "Couldn't create backup: \(error.localizedDescription)"); return nil }
     }
 
     @discardableResult
@@ -314,17 +314,17 @@ final class AppModel {
         let bundle: ConfigBundle
         do { bundle = try ConfigBundle.decode(data) }
         catch ConfigBundle.ImportError.unsupportedVersion(let v) {
-            lastError = "This backup was made by a different version of Hosts Switchr (format \(v)). Update the app and try again."
+            lastError = String(localized: "This backup was made by a different version of Hosts Switchr (format \(v)). Update the app and try again.")
             return nil
         } catch {
-            lastError = "This file isn't a valid Hosts Switchr backup."
+            lastError = String(localized: "This file isn't a valid Hosts Switchr backup.")
             return nil
         }
         let plan = ConfigBundle.plan(bundle, mode: mode, existingProfiles: store.profiles,
                                      existingFragments: fragmentStore.fragments, existingSources: catalog.sources)
         var summary = ImportSummary(warnings: plan.insecureSourceWarnings)
         do { try applyImportPlan(plan, store: store, fragmentStore: fragmentStore, catalog: catalog, summary: &summary) }
-        catch { lastError = "Import failed partway: \(error.localizedDescription)" }
+        catch { lastError = String(localized: "Import failed partway: \(error.localizedDescription)") }
         let totalItems = bundle.profiles.count + bundle.fragments.count + bundle.customSources.count
         summary.skipped = max(0, totalItems - summary.profilesAdded - summary.fragmentsAdded
                                   - summary.sourcesAdded - summary.warnings.count)
@@ -362,18 +362,18 @@ final class AppModel {
     func importHostsFile(at url: URL, as kind: HostsImportKind) {
         let content: String
         do { content = try String(contentsOf: url, encoding: .utf8) }
-        catch { lastError = "Couldn't read \(url.lastPathComponent): \(error.localizedDescription)"; return }
+        catch { lastError = String(localized: "Couldn't read \(url.lastPathComponent): \(error.localizedDescription)"); return }
         let base = url.deletingPathExtension().lastPathComponent
         let name = base.isEmpty ? "Imported" : base
         switch kind {
         case .profile:
             guard let store else { return }
             do { try store.add(Profile(name: name, content: content)); refresh(); selectedProfileID = profiles.last?.id }
-            catch { lastError = "Couldn't import as profile: \(error.localizedDescription)" }
+            catch { lastError = String(localized: "Couldn't import as profile: \(error.localizedDescription)") }
         case .fragment:
             guard let fragmentStore else { return }
             do { _ = try fragmentStore.add(LocalFragment(name: name, content: content)); refresh() }
-            catch { lastError = "Couldn't import as fragment: \(error.localizedDescription)" }
+            catch { lastError = String(localized: "Couldn't import as fragment: \(error.localizedDescription)") }
         }
     }
 
@@ -390,8 +390,8 @@ final class AppModel {
     func removeSource(_ id: UUID) {
         guard let catalog, let store else { return }
         flushPendingSave()
-        guard let src = catalog.source(for: id) else { lastError = "Source not found."; return }
-        guard src.kind == .custom else { lastError = "Built-in sources can't be removed."; return }
+        guard let src = catalog.source(for: id) else { lastError = String(localized: "Source not found."); return }
+        guard src.kind == .custom else { lastError = String(localized: "Built-in sources can’t be removed."); return }
         let affected = profiles.filter { $0.sourceIDs.contains(id) }  // capture prior lists for rollback
         do {
             try store.removeSourceFromAllProfiles(id)
@@ -402,7 +402,7 @@ final class AppModel {
             for p in affected where p.id != activeProfileID { staleProfileIDs.insert(p.id) }
             refresh()
             if let a = activeProfileID, affected.contains(where: { $0.id == a }) { recomputeActiveStale() }
-        } catch { lastError = "Couldn’t remove the source. Please try again."; refresh() }
+        } catch { lastError = String(localized: "Couldn’t remove the source. Please try again."); refresh() }
     }
 
     // MARK: Apply errors
@@ -414,11 +414,11 @@ final class AppModel {
         var errorDescription: String? {
             switch self {
             case let .missingSourceCaches(names):
-                return "Can't apply — these sources haven't been downloaded yet: \(names.joined(separator: ", ")). Refresh sources first."
+                return String(localized: "Can't apply — these sources haven't been downloaded yet: \(names.joined(separator: ", ")). Refresh sources first.")
             case let .missingSourceRecords(ids):
-                return "Can't apply — \(ids.count) configured source(s) are missing from the catalog (\(ids.joined(separator: ", "))). The source list may be corrupted; remove or restore the affected sources."
+                return String(localized: "Can't apply — these configured sources are missing from the catalog: \(ids.joined(separator: ", ")). The source list may be corrupted; remove or restore the affected sources.")
             case .unsavedEdit:
-                return "Can't apply — your latest edit couldn't be saved to disk. Resolve the save error and try again."
+                return String(localized: "Can't apply — your latest edit couldn't be saved to disk. Resolve the save error and try again.")
             }
         }
     }
@@ -494,7 +494,7 @@ final class AppModel {
         saveTask?.cancel(); saveTask = nil; pendingSave = nil
         // Restore only what apply composed; keep a post-apply rename.
         cur.content = a.profile.content; cur.sourceIDs = a.profile.sourceIDs; cur.fragmentIDs = a.profile.fragmentIDs
-        do { try store.update(cur) } catch { lastError = "Couldn’t revert the profile. Please try again." }
+        do { try store.update(cur) } catch { lastError = String(localized: "Couldn’t revert the profile. Please try again.") }
         refresh(); recomputeActiveStale()
     }
 
@@ -505,7 +505,7 @@ final class AppModel {
         let snap = AppliedProfileState.capture(p, fragments: fragments, sources: sources)
         let outcome: ApplyOutcome
         do { outcome = try await composeAndApply(p) } catch {
-            lastError = "Apply failed: \(error.localizedDescription)"; return
+            lastError = String(localized: "Apply failed: \(error.localizedDescription)"); return
         }
         // Commit point: a later metadata-save failure must not be reported as an apply failure.
         store.setActive(id)
@@ -513,7 +513,7 @@ final class AppModel {
         if snapshotIsCurrent(p) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(id) }
 
         do { try store.save() } catch {
-            lastError = "Applied \(p.name), but saving active-profile state failed: \(error.localizedDescription). It may not persist across relaunch."
+            lastError = String(localized: "Applied \(p.name), but saving active-profile state failed: \(error.localizedDescription). It may not persist across relaunch.")
         }
         refresh()
         notify("Hosts Switchr", "Applied \(p.name)")
@@ -572,7 +572,7 @@ final class AppModel {
                         if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
                         notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists")
                     } catch {
-                        lastError = "Auto re-apply failed (\(error.localizedDescription)). Re-apply when ready."
+                        lastError = String(localized: "Auto re-apply failed (\(error.localizedDescription)). Re-apply when ready.")
                     }
                 }
             }
@@ -592,8 +592,8 @@ final class AppModel {
     private func run(_ body: (ProfileStore) throws -> Void) {
         guard let store else { return }
         do { try body(store); refresh() }
-        catch ProfileError.protectedProfile { lastError = "That profile is protected and can’t be deleted." }
-        catch { lastError = "Something went wrong saving that change. Please try again." }
+        catch ProfileError.protectedProfile { lastError = String(localized: "That profile is protected and can’t be deleted.") }
+        catch { lastError = String(localized: "Something went wrong saving that change. Please try again.") }
     }
 
 }

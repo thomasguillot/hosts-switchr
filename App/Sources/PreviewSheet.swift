@@ -34,9 +34,9 @@ struct PreviewSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Blocklists").font(.caption).foregroundStyle(.secondary)
                 ForEach(data.stats.perSource, id: \.name) { s in
-                    Text("\(s.name)  —  \(s.domains) domains").font(.caption)
+                    Text("\(s.name)  —  \(Localized.domains(s.domains))").font(.caption)
                 }
-                Text("Total: ~\(data.stats.totalDomains) null-routed domains")
+                Text(Localized.nullRoutedTotal(data.stats.totalDomains))
                     .font(.caption).bold()
             }
 
