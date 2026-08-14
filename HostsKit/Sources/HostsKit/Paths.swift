@@ -1,6 +1,8 @@
 import Foundation
 
 public enum AppPaths {
+    public static let supportDirName = "Hosts Switchr"
+    public static let legacySupportDirName = "HostsSwitchr"
     public static let profilesDirName = "profiles"
     public static let profilesMetadataName = "profiles.json"
     public static let backupsDirName = "backups"
@@ -36,8 +38,37 @@ public enum AppPaths {
     // MARK: Live support root (used by the app)
 
     public static func supportRoot(fileManager: FileManager = .default) -> URL {
-        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("HostsSwitchr", isDirectory: true)
+        supportBase(fileManager: fileManager).appendingPathComponent(supportDirName, isDirectory: true)
+    }
+
+    public static func supportBase(fileManager: FileManager = .default) -> URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    }
+
+    /// The support root to use, copying a pre-rename `HostsSwitchr` store across on first run and
+    /// leaving the original in place as a safety net. Staged then renamed so a copy that dies partway
+    /// never leaves a half-store behind, and falls back to the legacy root when the copy fails at all:
+    /// an empty store would reseed System Default from the live /etc/hosts and orphan the real profiles.
+    public static func resolveSupportRoot(base: URL, fileManager: FileManager = .default) -> URL {
+        let current = base.appendingPathComponent(supportDirName, isDirectory: true)
+        let legacy = base.appendingPathComponent(legacySupportDirName, isDirectory: true)
+        guard !fileManager.fileExists(atPath: current.path),
+              fileManager.fileExists(atPath: legacy.path) else { return current }
+
+        let staging = base.appendingPathComponent("\(supportDirName).migrating-\(UUID().uuidString)",
+                                                  isDirectory: true)
+        do {
+            try fileManager.copyItem(at: legacy, to: staging)
+            try fileManager.moveItem(at: staging, to: current)
+            return current
+        } catch {
+            try? fileManager.removeItem(at: staging)
+            return legacy
+        }
+    }
+
+    public static func resolveSupportRoot(fileManager: FileManager = .default) -> URL {
+        resolveSupportRoot(base: supportBase(fileManager: fileManager), fileManager: fileManager)
     }
     public static func profilesDir(fileManager: FileManager = .default) -> URL {
         profilesDir(root: supportRoot(fileManager: fileManager))
