@@ -75,7 +75,12 @@ struct MainWindowView: View {
             }
         }
         .onAppear { NSApp.setActivationPolicy(.regular) }
-        .onDisappear { NSApp.setActivationPolicy(.accessory) }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
+            // The router outlives the window, so a closed window must drop its tab or the next
+            // plain "Open Hosts Switchr…" reopens on it instead of Profiles.
+            router.section = .profiles
+        }
         .alert("Import complete", isPresented: Binding(
             get: { importSummary != nil },
             set: { if !$0 { importSummary = nil } }
