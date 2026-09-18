@@ -166,15 +166,15 @@ struct MainWindowView: View {
         }
     }
 
-    private func railItem(_ tag: SidebarSection, _ title: String,
-                          _ symbol: String, help: String) -> some View {
+    private func railItem(_ tag: SidebarSection, _ title: LocalizedStringKey,
+                          _ symbol: String, help: LocalizedStringKey) -> some View {
         Label(title, systemImage: symbol)
             .tag(tag)
             .help(help)
     }
 
     // Fixed-height icon box keeps the three "No … Selected" placeholders vertically aligned despite differing glyph heights.
-    private func placeholder(_ title: String, _ symbol: String) -> some View {
+    private func placeholder(_ title: LocalizedStringKey, _ symbol: String) -> some View {
         ContentUnavailableView {
             Label {
                 Text(title)

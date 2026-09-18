@@ -788,6 +788,35 @@
         }
       }
     },
+    "App preferences": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "App preferences"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "App preferences"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ajustes de la app"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Réglages de l’app"
+          }
+        }
+      }
+    },
     "Applied %@, but saving active-profile state failed: %@. It may not persist across relaunch.": {
       "extractionState": "manual",
       "localizations": {
@@ -1103,6 +1132,35 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Listes de blocage"
+          }
+        }
+      }
+    },
+    "Built-in": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Built-in"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Built-in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Integradas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Intégrées"
           }
         }
       }
@@ -2793,6 +2851,35 @@
         }
       }
     },
+    "No Fragment Selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No Fragment Selected"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No Fragment Selected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ningún fragmento seleccionado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Aucun fragment sélectionné"
+          }
+        }
+      }
+    },
     "No Fragments": {
       "extractionState": "manual",
       "localizations": {
@@ -2818,6 +2905,35 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Aucun fragment"
+          }
+        }
+      }
+    },
+    "No Profile Selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No Profile Selected"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "No Profile Selected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ningún perfil seleccionado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Aucun profil sélectionné"
           }
         }
       }
@@ -3373,6 +3489,35 @@
         }
       }
     },
+    "Reusable host snippets you toggle per profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reusable host snippets you toggle per profile"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reusable host snippets you toggle per profile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Fragmentos de hosts reutilizables que activas en cada perfil"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Des extraits hosts réutilisables que vous activez profil par profil"
+          }
+        }
+      }
+    },
     "Reusable host snippets you toggle per profile — e.g. a “Docker” fragment listing every local container hostname, switched on only in your Dev profile.": {
       "extractionState": "manual",
       "localizations": {
@@ -3808,6 +3953,35 @@
         }
       }
     },
+    "Subscribed remote blocklist / hosts sources": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Subscribed remote blocklist / hosts sources"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Subscribed remote blocklist / hosts sources"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Listas de bloqueo y fuentes de hosts remotas a las que te has suscrito"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Listes de blocage et sources hosts distantes auxquelles vous êtes abonné"
+          }
+        }
+      }
+    },
     "Switch profiles, refresh sources, or open the window from the menu-bar icon. In Settings you can set the auto-refresh interval, re-apply the active profile automatically after a refresh, show the active profile's name in the menu bar, and launch Hosts Switchr at login.": {
       "extractionState": "manual",
       "localizations": {
@@ -3833,6 +4007,35 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Changez de profil, actualisez les sources ou ouvrez la fenêtre depuis l’icône de la barre des menus. Dans les Réglages, vous pouvez définir l’intervalle d’actualisation automatique, réappliquer le profil actif automatiquement après une actualisation, afficher le nom du profil actif dans la barre des menus et ouvrir Hosts Switchr à l’ouverture de session."
+          }
+        }
+      }
+    },
+    "Switchable /etc/hosts profiles": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Switchable /etc/hosts profiles"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Switchable /etc/hosts profiles"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Perfiles de /etc/hosts intercambiables"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Profils /etc/hosts interchangeables"
           }
         }
       }
@@ -4437,6 +4640,35 @@
         }
       }
     },
+    "Version and updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Version and updates"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Version and updates"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Versión y actualizaciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Version et mises à jour"
+          }
+        }
+      }
+    },
     "Weekly": {
       "extractionState": "manual",
       "localizations": {
@@ -4578,6 +4810,35 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Votre liste de sources enregistrée était illisible ; elle a été mise de côté sous le nom sources.json.corrupt. Les sources intégrées ont été restaurées ; rajoutez vos sources personnalisées."
+          }
+        }
+      }
+    },
+    "Your sources": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your sources"
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your sources"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Tus fuentes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Vos sources"
           }
         }
       }

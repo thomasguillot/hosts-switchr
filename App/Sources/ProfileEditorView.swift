@@ -120,7 +120,7 @@ struct ProfileEditorView: View {
         return max(60, (geo.size.height - editorFloor - chrome) / open)
     }
 
-    private func sectionHeader(_ title: String, expanded: Binding<Bool>) -> some View {
+    private func sectionHeader(_ title: LocalizedStringKey, expanded: Binding<Bool>) -> some View {
         Button {
             expanded.wrappedValue.toggle()
         } label: {
