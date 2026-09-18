@@ -10,15 +10,14 @@ struct MenuBarView: View {
 
     var body: some View {
         ForEach(model.profiles) { profile in
-            Button {
-                model.selectedProfileID = profile.id
-                Task { await model.applyAsync(profile.id) }
-            } label: {
-                let isActive = profile.id == model.activeProfileID
-                let stale = model.staleProfileIDs.contains(profile.id)
-                Label(profile.name + (stale ? " \u{21BB}" : ""),
-                      systemImage: isActive ? "checkmark" : "")
-            }
+            let stale = model.staleProfileIDs.contains(profile.id)
+            Toggle(profile.name + (stale ? " \u{21BB}" : ""), isOn: Binding(
+                get: { profile.id == model.activeProfileID },
+                set: { _ in
+                    model.selectedProfileID = profile.id
+                    Task { await model.applyAsync(profile.id) }
+                }
+            ))
         }
         Divider()
         Button {

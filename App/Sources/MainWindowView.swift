@@ -8,6 +8,7 @@ private let railWidth: CGFloat = 174
 struct MainWindowView: View {
     @Environment(AppModel.self) private var model
     @Environment(WindowRouter.self) private var router
+    @Environment(\.sidebarRowSize) private var sidebarRowSize
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var preview: PreviewData?
     @State private var pendingApplyID: UUID?
@@ -116,9 +117,8 @@ struct MainWindowView: View {
             }
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
-            // Sized for two railItem rows at .title3 — 32pt each plus trailing inset. Scrolling is off,
-            // so a taller row or a third utility tab clips silently; budget ~32pt more per row added.
-            .frame(height: 80)
+            // Scrolling is off, so a third utility tab clips silently unless this grows by one row.
+            .frame(height: railRowHeight * 2 + 16)
         }
     }
 
@@ -158,10 +158,17 @@ struct MainWindowView: View {
         }
     }
 
+    private var railRowHeight: CGFloat {
+        switch sidebarRowSize {
+        case .small: 24
+        case .large: 40
+        default: 32
+        }
+    }
+
     private func railItem(_ tag: SidebarSection, _ title: String,
                           _ symbol: String, help: String) -> some View {
         Label(title, systemImage: symbol)
-            .font(.title3)
             .tag(tag)
             .help(help)
     }
