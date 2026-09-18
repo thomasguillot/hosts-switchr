@@ -36,7 +36,7 @@ struct SourcesView: View {
         return { model.removeSource(id); selectedSourceID = nil }
     }
 
-    private func sectionLabel(_ text: String) -> some View {
+    private func sectionLabel(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.subheadline).fontWeight(.semibold)
             .foregroundStyle(.secondary)
