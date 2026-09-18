@@ -43,8 +43,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hostsswitchr.app
         # Drives the bundle filename (Finder, Spotlight, Launchpad) and CFBundleName (app menu, Dock).
         PRODUCT_NAME: "Hosts Switchr"
-        MARKETING_VERSION: "1.4.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "1.4.1"
+        CURRENT_PROJECT_VERSION: "13"
         SWIFT_VERSION: "6.0"
         # Lets the compiler extract Text("…")/String(localized:) keys into Localizable.xcstrings.
         SWIFT_EMIT_LOC_STRINGS: YES
