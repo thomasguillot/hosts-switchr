@@ -15,7 +15,8 @@ import Testing
         + "&& cp /etc/hosts '/etc/hosts.hsk-bak.B' && chmod 644 '/etc/hosts.hsk-bak.B' && mv '/etc/hosts.hsk-tmp.T' /etc/hosts; then "
     private let tail = "else rm -f '/etc/hosts.hsk-tmp.T' '/etc/hosts.hsk-bak.B'; false; fi"
     private let marker = "'# Managed by Hosts Switchr. Removed when no wildcard needs it.'"
-    private let resolverDirChecks = "[ ! -L /etc/resolver ] && mkdir -m 755 -p /etc/resolver && [ -O /etc/resolver ] && [ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ]"
+    private let resolverDirChecks = "[ ! -L /etc/resolver ] && mkdir -m 755 -p /etc/resolver && [ -O /etc/resolver ] && [ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ] "
+        + "&& [ \"$(ls -led /etc/resolver | wc -l | tr -d ' ')\" = 1 ]"
     private let reclaim = "find -P /etc/resolver -maxdepth 1 -type f -name '.hsk-tmp.*' -mmin +5 -delete 2>/dev/null; "
 
     private func writeGuard(_ target: String) -> String {
@@ -35,12 +36,14 @@ import Testing
 
     @Test func resolverStepRunsAfterHostsCommitAndBeforeFlush() {
         let request = ApplyRequest(stagedPath: "/tmp/s.hosts",
-                                   resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")],
+                                   resolverWrites: [ResolverWrite(domain: "test", port: 53535)],
                                    resolverRemovals: ["old.test"])
         #expect(command(request) == head + "rc=0; { " + reclaim
             + "[ ! -L /etc/resolver ] && mkdir -m 755 -p /etc/resolver && [ -O /etc/resolver ] "
             + "&& [ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ] "
-            + "&& cp '/tmp/r' '/etc/resolver/.hsk-tmp.U1' && chown root:wheel '/etc/resolver/.hsk-tmp.U1' "
+            + "&& [ \"$(ls -led /etc/resolver | wc -l | tr -d ' ')\" = 1 ] "
+            + "&& printf '%s\\n' '# Managed by Hosts Switchr. Removed when no wildcard needs it.' 'nameserver 127.0.0.1' 'port 53535' "
+            + "> '/etc/resolver/.hsk-tmp.U1' && chown root:wheel '/etc/resolver/.hsk-tmp.U1' "
             + "&& chmod 644 '/etc/resolver/.hsk-tmp.U1' "
             + "&& [ ! -L '/etc/resolver/test' ] && { [ ! -e '/etc/resolver/test' ] || { [ -f '/etc/resolver/test' ] "
             + "&& [ \"$(head -n 1 '/etc/resolver/test')\" = '# Managed by Hosts Switchr. Removed when no wildcard needs it.' ]; }; } "
@@ -54,7 +57,7 @@ import Testing
 
     @Test func eachWriteGetsItsOwnTemp() {
         let request = ApplyRequest(stagedPath: "/tmp/s.hosts", resolverWrites: [
-            ResolverWrite(domain: "test", stagedPath: "/tmp/r"), ResolverWrite(domain: "internal", stagedPath: "/tmp/r")])
+            ResolverWrite(domain: "test", port: 53535), ResolverWrite(domain: "internal", port: 53535)])
         let c = command(request)
         #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/test'"))
         #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U2' '/etc/resolver/internal'"))
@@ -69,7 +72,7 @@ import Testing
 
     @Test func resolverDirectoryMustBeARootOnlyNonSymlinkBeforeAnyWrite() {
         for request in [
-            ApplyRequest(stagedPath: "/tmp/s.hosts", resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")]),
+            ApplyRequest(stagedPath: "/tmp/s.hosts", resolverWrites: [ResolverWrite(domain: "test", port: 53535)]),
             ApplyRequest(stagedPath: "/tmp/s.hosts", resolverRemovals: ["test"]),
         ] {
             let c = command(request)
@@ -80,7 +83,7 @@ import Testing
 
     @Test func ownershipIsRecheckedImmediatelyBeforeEachMvAndRm() {
         let request = ApplyRequest(stagedPath: "/tmp/s.hosts",
-                                   resolverWrites: [ResolverWrite(domain: "app.test", stagedPath: "/tmp/r")],
+                                   resolverWrites: [ResolverWrite(domain: "app.test", port: 53535)],
                                    resolverRemovals: ["a.internal", "b.internal"])
         let c = command(request)
         #expect(c.contains("&& chmod 644 '/etc/resolver/.hsk-tmp.U1' && " + writeGuard("/etc/resolver/app.test")
@@ -93,7 +96,7 @@ import Testing
 
     @Test func appleScriptLiteralRoundTripsTheResolverScript() throws {
         let c = command(ApplyRequest(stagedPath: "/tmp/s.hosts",
-                                     resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")],
+                                     resolverWrites: [ResolverWrite(domain: "test", port: 53535)],
                                      resolverRemovals: ["old.test"]))
         let literal = AuthorizationPrivilegedRunner.escapeForAppleScriptStringLiteral(c)
         var error: NSDictionary?
@@ -104,24 +107,36 @@ import Testing
 
     @Test func onlyResolverMovesUseNoFollowMv() {
         let c = command(ApplyRequest(stagedPath: "/tmp/s.hosts",
-                                     resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")]))
+                                     resolverWrites: [ResolverWrite(domain: "test", port: 53535)]))
         #expect(c.contains("&& mv '/etc/hosts.hsk-tmp.T' /etc/hosts; then "))
         #expect(c.components(separatedBy: "mv -h ").count == 2)
         #expect(c.components(separatedBy: "mv ").count == 3)
+    }
+
+    @Test func rootWritesResolverContentFromConstantsAndReadsNoStagedFile() {
+        let c = command(ApplyRequest(stagedPath: "/tmp/s.hosts",
+                                     resolverWrites: [ResolverWrite(domain: "test", port: 53535),
+                                                      ResolverWrite(domain: "app.test", port: 53535)]))
+        let printf = "printf '%s\\n' " + ResolverFile.lines(port: 53535).map(AuthorizationPrivilegedRunner.singleQuote)
+            .joined(separator: " ")
+        #expect(c.contains(printf + " > '/etc/resolver/.hsk-tmp.U1' && "))
+        #expect(c.contains(printf + " > '/etc/resolver/.hsk-tmp.U2' && "))
+        #expect(c.components(separatedBy: "cp ").count == 3)
+        #expect(ResolverFile.lines(port: 53535).map { $0 + "\n" }.joined() == ResolverFile.contents(port: 53535))
     }
 
     @Test func validateRejectsUnvalidatedDomains() throws {
         for bad in ["../evil", "evil'; rm -rf /", "*.test", "example.com", "Test", ""] {
             #expect(throws: RunnerError.invalidResolverDomain(bad)) {
                 try AuthorizationPrivilegedRunner.validate(ApplyRequest(stagedPath: "/tmp/s",
-                    resolverWrites: [ResolverWrite(domain: bad, stagedPath: "/tmp/r")]))
+                    resolverWrites: [ResolverWrite(domain: bad, port: 53535)]))
             }
             #expect(throws: RunnerError.invalidResolverDomain(bad)) {
                 try AuthorizationPrivilegedRunner.validate(ApplyRequest(stagedPath: "/tmp/s", resolverRemovals: [bad]))
             }
         }
         try AuthorizationPrivilegedRunner.validate(ApplyRequest(stagedPath: "/tmp/s",
-            resolverWrites: [ResolverWrite(domain: "app.test", stagedPath: "/tmp/r")], resolverRemovals: ["svc.internal"]))
+            resolverWrites: [ResolverWrite(domain: "app.test", port: 53535)], resolverRemovals: ["svc.internal"]))
     }
 
     @Test func resultDistinguishesHostsFailureFromResolverFailure() throws {
@@ -143,15 +158,12 @@ import Testing
     private struct Sandbox {
         let root: URL
         let dir: URL
-        let staged: URL
         let ours = ResolverFile.contents(port: 53535)
 
         init() throws {
             root = FileManager.default.temporaryDirectory.appendingPathComponent("resolver-sh-\(UUID().uuidString)")
             dir = root.appendingPathComponent("resolver")
-            staged = root.appendingPathComponent("staged")
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-            try ours.write(to: staged, atomically: true, encoding: .utf8)
         }
 
         func file(_ name: String) -> URL { dir.appendingPathComponent(name) }
@@ -173,7 +185,7 @@ import Testing
             var n = 0
             let full = AuthorizationPrivilegedRunner.command(
                 for: ApplyRequest(stagedPath: "/tmp/s.hosts",
-                                  resolverWrites: writes.map { ResolverWrite(domain: $0, stagedPath: staged.path) },
+                                  resolverWrites: writes.map { ResolverWrite(domain: $0, port: 53535) },
                                   resolverRemovals: removals),
                 hostsTmp: "/etc/hosts.hsk-tmp.T", bakTmp: "/etc/hosts.hsk-bak.B",
                 resolverTmp: { n += 1; return "/etc/resolver/.hsk-tmp.U\(n)" })
@@ -286,6 +298,22 @@ import Testing
             #expect(try box.run(shell, writes: ["test"], removals: ["gone.test"]) == 3)
             #expect(try FileManager.default.contentsOfDirectory(atPath: box.dir.path).isEmpty)
         }
+    }
+
+    @Test(arguments: ["/bin/sh", "/bin/dash"])
+    func refusesAResolverDirectoryCarryingAnACL(shell: String) throws {
+        let box = try Sandbox()
+        defer { box.clean() }
+        try FileManager.default.createDirectory(at: box.dir, withIntermediateDirectories: true)
+        let chmod = Process()
+        chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+        chmod.arguments = ["+a", "everyone allow add_file,delete_child", box.dir.path]
+        try chmod.run()
+        chmod.waitUntilExit()
+        try #require(chmod.terminationStatus == 0)
+
+        #expect(try box.run(shell, writes: ["test"], removals: ["gone.test"]) == 3)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: box.dir.path).isEmpty)
     }
 
     @Test(arguments: ["/bin/sh", "/bin/dash"])

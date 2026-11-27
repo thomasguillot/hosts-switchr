@@ -170,7 +170,7 @@ private func tempDir() -> URL {
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let staged = dir.appendingPathComponent("staged.hosts")
     try "127.0.0.1 localhost".write(to: staged, atomically: true, encoding: .utf8)
-    let writes = [ResolverWrite(domain: "test", stagedPath: "/tmp/r")]
+    let writes = [ResolverWrite(domain: "test", port: 53535)]
 
     let result = try HostsApplier(runner: runner, backupsDir: dir)
         .apply(stagedURL: staged, resolverWrites: writes, resolverRemovals: ["old.test"])

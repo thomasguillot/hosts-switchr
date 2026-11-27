@@ -1,9 +1,9 @@
 public struct ResolverWrite: Equatable, Sendable {
     public let domain: String
-    public let stagedPath: String
-    public init(domain: String, stagedPath: String) {
+    public let port: UInt16
+    public init(domain: String, port: UInt16) {
         self.domain = domain
-        self.stagedPath = stagedPath
+        self.port = port
     }
 }
 

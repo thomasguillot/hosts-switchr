@@ -4,8 +4,12 @@ public enum ResolverFile {
     public static let directory = URL(fileURLWithPath: "/etc/resolver", isDirectory: true)
     public static let marker = "# Managed by Hosts Switchr. Removed when no wildcard needs it."
 
+    public static func lines(port: UInt16) -> [String] {
+        [marker, "nameserver 127.0.0.1", "port \(String(port))"]
+    }
+
     public static func contents(port: UInt16) -> String {
-        "\(marker)\nnameserver 127.0.0.1\nport \(String(port))\n"
+        lines(port: port).map { $0 + "\n" }.joined()
     }
 
     public static func isManaged(_ contents: String) -> Bool {

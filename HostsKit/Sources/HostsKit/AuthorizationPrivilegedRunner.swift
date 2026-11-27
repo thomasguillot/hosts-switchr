@@ -70,13 +70,15 @@ public final class AuthorizationPrivilegedRunner: PrivilegedRunner, @unchecked S
         var steps = [
             "[ ! -L /etc/resolver ]", "mkdir -m 755 -p /etc/resolver", "[ -O /etc/resolver ]",
             "[ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ]",
+            "[ \"$(ls -led /etc/resolver | wc -l | tr -d ' ')\" = 1 ]",
         ]
         for write in request.resolverWrites {
             let temp = singleQuote(resolverTmp())
             let target = singleQuote("/etc/resolver/\(write.domain)")
             temps.append(temp)
+            let lines = ResolverFile.lines(port: write.port).map(singleQuote).joined(separator: " ")
             steps += [
-                "cp \(singleQuote(write.stagedPath)) \(temp)", "chown root:wheel \(temp)", "chmod 644 \(temp)",
+                "printf '%s\\n' \(lines) > \(temp)", "chown root:wheel \(temp)", "chmod 644 \(temp)",
                 ifOurs(target), "mv -h \(temp) \(target)",
             ]
         }

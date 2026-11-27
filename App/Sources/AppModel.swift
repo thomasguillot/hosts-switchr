@@ -465,8 +465,7 @@ final class AppModel {
         let set = try await Task.detached(priority: .userInitiated) {
             try composer.compose(localContent: local, localFragments: frags, sources: resolved, to: temp).wildcards
         }.value
-        let prepared = try wildcards.prepare(set)
-        defer { prepared.discardStaging() }
+        let prepared = wildcards.prepare(set)
         let result = try applier.apply(stagedURL: temp, resolverWrites: prepared.writes, resolverRemovals: prepared.removals)
         let applied = wildcards.didApply(prepared, resolverFailed: result.resolverFailed)
         if let message = applied.message { lastError = message }

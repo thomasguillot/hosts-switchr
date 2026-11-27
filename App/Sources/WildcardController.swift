@@ -7,12 +7,6 @@ struct PreparedResolver {
     let removals: [String]
     let foreign: [String]
     let deployment: WildcardDeployment
-    let stagedURL: URL?
-
-    func discardStaging() {
-        guard let stagedURL else { return }
-        try? FileManager.default.removeItem(at: stagedURL)
-    }
 }
 
 @MainActor
@@ -32,25 +26,17 @@ final class WildcardController {
         self.resolverDirectory = resolverDirectory
     }
 
-    func prepare(_ set: WildcardSet) throws -> PreparedResolver {
+    func prepare(_ set: WildcardSet) -> PreparedResolver {
         let port = WildcardDNS.defaultPort
         let plan = ResolverPlan.make(desired: set.rules.map(\.suffix), port: port,
                                      existing: ResolverDirectory.read(resolverDirectory))
-        var stagedURL: URL?
-        if !plan.writes.isEmpty {
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("hostsswitchr-resolver-\(UUID().uuidString)")
-            try ResolverFile.contents(port: port).write(to: url, atomically: true, encoding: .utf8)
-            stagedURL = url
-        }
         let foreign = Set(plan.foreign)
         let servedSet = WildcardSet(rules: set.rules.filter { !foreign.contains($0.suffix) },
                                     shadowedNames: set.shadowedNames)
         let deployment = WildcardDeployment(served: servedSet, resolverDomains: (plan.writes + plan.unchanged).sorted(),
                                             port: port)
-        let writes = stagedURL.map { url in plan.writes.map { ResolverWrite(domain: $0, stagedPath: url.path) } } ?? []
-        return PreparedResolver(writes: writes, removals: plan.removals, foreign: plan.foreign,
-                                deployment: deployment, stagedURL: stagedURL)
+        return PreparedResolver(writes: plan.writes.map { ResolverWrite(domain: $0, port: port) },
+                                removals: plan.removals, foreign: plan.foreign, deployment: deployment)
     }
 
     func didApply(_ prepared: PreparedResolver, resolverFailed: Bool) -> (deployment: WildcardDeployment, message: String?) {
