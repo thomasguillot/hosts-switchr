@@ -15,6 +15,38 @@ public struct DNSQuestion: Equatable, Sendable {
     public let wire: Data
 }
 
+extension DNSQuestion {
+    var hasHostnameLabels: Bool {
+        var index = wire.startIndex
+        while index < wire.endIndex {
+            let length = Int(wire[index])
+            if length == 0 { return true }
+            let end = index + 1 + length
+            guard length & 0xC0 == 0, end <= wire.endIndex,
+                wire[(index + 1)..<end].allSatisfy(Self.isHostnameByte)
+            else { return false }
+            index = end
+        }
+        return false
+    }
+
+    private static func isHostnameByte(_ byte: UInt8) -> Bool {
+        switch byte {
+        case UInt8(ascii: "a")...UInt8(ascii: "z"), UInt8(ascii: "A")...UInt8(ascii: "Z"),
+            UInt8(ascii: "0")...UInt8(ascii: "9"), UInt8(ascii: "-"):
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+struct DNSAnswer {
+    let type: UInt16
+    let ttl: UInt32
+    let rdata: Data
+}
+
 public enum DNSParseResult: Equatable, Sendable {
     case query(id: UInt16, recursionDesired: Bool, question: DNSQuestion)
     case formatError(id: UInt16, recursionDesired: Bool)
@@ -65,7 +97,7 @@ public enum DNSMessage {
 
     static func response(
         id: UInt16, recursionDesired: Bool, rcode: DNSRcode, question: DNSQuestion?,
-        answer: (type: UInt16, ttl: UInt32, rdata: Data)?
+        answer: DNSAnswer?
     ) -> Data {
         var out = Data()
         func u16(_ value: UInt16) { out.append(UInt8(value >> 8)); out.append(UInt8(value & 0xFF)) }
@@ -109,9 +141,9 @@ public enum WildcardDNSResponder {
             func reply(_ rcode: DNSRcode, rdata: Data? = nil) -> Data {
                 DNSMessage.response(
                     id: id, recursionDesired: recursionDesired, rcode: rcode, question: question,
-                    answer: rdata.map { (question.type, ttl, $0) })
+                    answer: rdata.map { DNSAnswer(type: question.type, ttl: ttl, rdata: $0) })
             }
-            guard question.qclass == 1 else { return reply(.refused) }
+            guard question.qclass == 1, question.hasHostnameLabels else { return reply(.refused) }
             switch matcher.resolve(name: question.name, type: question.type) {
             case let .address(rdata): return reply(.noError, rdata: rdata)
             case .noData: return reply(.noError)

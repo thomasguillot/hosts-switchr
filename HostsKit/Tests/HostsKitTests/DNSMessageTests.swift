@@ -132,6 +132,26 @@ private func count(_ r: Data, at i: Int) -> Int { Int(byte(r, i)) << 8 | Int(byt
         #expect(rcode(r) == 5 && count(r, at: 4) == 1 && count(r, at: 6) == 0)
     }
 
+    @Test func responder_refusesLabelsWithEmbeddedDotsOrNonHostnameBytes() throws {
+        func raw(_ labels: [[UInt8]]) -> Data {
+            var q = Data(query("a", type: 1).prefix(12))
+            for label in labels { q.append(UInt8(label.count)); q.append(contentsOf: label) }
+            q.append(contentsOf: [0, 0, 1, 0, 1])
+            return q
+        }
+        let dotted = raw([Array("a.test".utf8)])
+        let nonHostname = [raw([Array("a b".utf8), Array("test".utf8)]),
+                           raw([[0x61, 0x00], Array("test".utf8)]),
+                           raw([Array("é".utf8), Array("test".utf8)]),
+                           raw([Array("_x".utf8), Array("test".utf8)])]
+        for bad in [dotted] + nonHostname {
+            let r = try #require(WildcardDNSResponder.response(to: bad, matcher: matcher))
+            #expect(rcode(r) == 5 && count(r, at: 4) == 1 && count(r, at: 6) == 0)
+        }
+        let r = try #require(WildcardDNSResponder.response(to: raw([Array("A-1".utf8), Array("test".utf8)]), matcher: matcher))
+        #expect(rcode(r) == 0 && count(r, at: 6) == 1)
+    }
+
     @Test func responder_survivesEveryTruncationAndSingleByteMutation() {
         let seed = [UInt8](query("a.b.test", type: 1))
         for cut in 0...seed.count {
