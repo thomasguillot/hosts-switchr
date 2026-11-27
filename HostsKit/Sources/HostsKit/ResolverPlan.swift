@@ -14,8 +14,10 @@ public enum ResolverFile {
 }
 
 public enum ResolverDirectory {
-    public static func read(_ dir: URL = ResolverFile.directory, fileManager: FileManager = .default) -> [String: String] {
-        guard let names = try? fileManager.contentsOfDirectory(atPath: dir.path) else { return [:] }
+    public static func read(_ dir: URL = ResolverFile.directory, fileManager: FileManager = .default) -> [String: String]? {
+        guard let names = try? fileManager.contentsOfDirectory(atPath: dir.path) else {
+            return fileManager.fileExists(atPath: dir.path) ? nil : [:]
+        }
         var result: [String: String] = [:]
         for name in names where !name.hasPrefix(".") {
             let url = dir.appendingPathComponent(name)
@@ -57,7 +59,10 @@ public struct ResolverPlan: Equatable, Sendable {
         self.foreign = foreign
     }
 
-    public static func make(desired: [String], port: UInt16, existing: [String: String]) -> ResolverPlan {
+    public static func make(desired: [String], port: UInt16, existing: [String: String]?) -> ResolverPlan {
+        guard let existing else {
+            return ResolverPlan(writes: [], removals: [], unchanged: [], foreign: Array(Set(desired)).sorted())
+        }
         let wanted = Set(desired)
         let wantedLowercased = Set(desired.map { $0.lowercased() })
         let ours = ResolverFile.contents(port: port)
@@ -89,9 +94,12 @@ public struct ResolverPlan: Equatable, Sendable {
             foreign: foreign.sorted())
     }
 
-    public static func needsReapply(recorded: WildcardDeployment?, current: WildcardSet, existing: [String: String]) -> Bool {
+    public static func needsReapply(recorded: WildcardDeployment?, current: WildcardSet, existing: [String: String]?) -> Bool {
         guard let recorded else { return !current.isEmpty }
+        guard let existing else { return true }
         let expected = ResolverFile.contents(port: recorded.port)
-        return recorded.resolverDomains.contains { existing[$0] != expected }
+        if recorded.resolverDomains.contains(where: { existing[$0] != expected }) { return true }
+        let plan = make(desired: recorded.resolverDomains, port: recorded.port, existing: existing)
+        return !plan.writes.isEmpty || !plan.removals.isEmpty
     }
 }

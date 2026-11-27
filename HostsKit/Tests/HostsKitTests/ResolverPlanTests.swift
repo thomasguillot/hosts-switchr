@@ -52,10 +52,11 @@ import Testing
         try FileManager.default.createDirectory(at: dir.appendingPathComponent("sub"), withIntermediateDirectories: true)
         try ours.write(to: dir.appendingPathComponent("test"), atomically: true, encoding: .utf8)
         try ours.write(to: dir.appendingPathComponent(".hsk-tmp.X"), atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: dir) }
         try FileManager.default.createSymbolicLink(at: dir.appendingPathComponent("link"),
                                                    withDestinationURL: dir.appendingPathComponent("test"))
         #expect(ResolverDirectory.read(dir) == ["test": ours, "sub": "", "link": ""])
-        #expect(ResolverDirectory.read(dir.appendingPathComponent("missing")).isEmpty)
+        #expect(ResolverDirectory.read(dir.appendingPathComponent("missing")) == [:])
     }
 
     @Test func needsReapply_withoutRecordedDeploymentButCurrentRules_isTrue() {
@@ -69,5 +70,27 @@ import Testing
         #expect(!ResolverPlan.needsReapply(recorded: d, current: .empty, existing: ["test": ours]))
         #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: [:]))
         #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: ["test": "nameserver 127.0.0.1\n"]))
+        #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: ["test": ResolverFile.contents(port: 53536)]))
+    }
+
+    @Test func needsReapply_whenAManagedOrphanRemains() {
+        let d = WildcardDeployment(served: .empty, resolverDomains: ["test"], port: 53535)
+        #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: ["test": ours, "old.test": ours]))
+    }
+
+    @Test func unreadableDirectoryReadsAsNilAndPlansNothingButForeign() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("resolver-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: dir.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        #expect(ResolverDirectory.read(dir) == nil)
+        let plan = ResolverPlan.make(desired: ["test", "app.test"], port: 53535, existing: nil)
+        #expect(plan.writes.isEmpty && plan.removals.isEmpty && plan.unchanged.isEmpty)
+        #expect(plan.foreign == ["app.test", "test"])
+        let d = WildcardDeployment(served: .empty, resolverDomains: ["test"], port: 53535)
+        #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: nil))
     }
 }
