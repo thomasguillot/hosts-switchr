@@ -110,7 +110,9 @@ final class WildcardDNSService: @unchecked Sendable {
     }
 
     private static func listener(_ parameters: NWParameters, port: UInt16) throws -> NWListener {
-        let endpointPort = NWEndpoint.Port(rawValue: port) ?? .any
+        guard port != 0, let endpointPort = NWEndpoint.Port(rawValue: port) else {
+            throw NWError.posix(.EINVAL)
+        }
         parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: endpointPort)
         return try NWListener(using: parameters)
     }
