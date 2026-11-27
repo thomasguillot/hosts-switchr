@@ -21,13 +21,22 @@ final class WildcardDNSService: @unchecked Sendable {
         var listeners: [NWListener] = []
         var connections: [NWConnection] = []
         var state: WildcardServiceState?
+        var generation: UInt64 = 0
         var handler: StateHandler?
 
-        func run() {
+        func cancel() {
             listeners.forEach { $0.cancel() }
             connections.forEach { $0.cancel() }
+        }
+
+        func run(for service: WildcardDNSService) {
+            cancel()
             guard let state, let handler else { return }
-            Task { @MainActor in handler(state) }
+            let generation = generation
+            Task { @MainActor [weak service] in
+                guard service?.claimDelivery(generation) == true else { return }
+                handler(state)
+            }
         }
     }
 
@@ -43,6 +52,8 @@ final class WildcardDNSService: @unchecked Sendable {
     private var port: UInt16?
     private var pendingPort: UInt16?
     private var state: WildcardServiceState = .stopped
+    private var generation: UInt64 = 0
+    private var deliveredGeneration: UInt64 = 0
     private var onState: StateHandler?
     private var connections: [UInt64: Tracked] = [:]
     private var nextConnectionID: UInt64 = 0
@@ -52,7 +63,7 @@ final class WildcardDNSService: @unchecked Sendable {
     }
 
     deinit {
-        takeAllLocked().run()
+        takeAllLocked().cancel()
     }
 
     func serve(_ set: WildcardSet, port: UInt16, onState: @escaping StateHandler) {
@@ -65,24 +76,42 @@ final class WildcardDNSService: @unchecked Sendable {
         let reports: [Report] = lock.withLock {
             self.matcher = matcher
             self.onState = onState
-            if udpListener != nil, self.port == port { return [] }
+            if udpListener != nil, self.port == port { return [settleLocked(state)] }
             let teardown = takeAllLocked()
+            state = .stopped
             pendingPort = port
             return [teardown] + [startPendingLocked()].compactMap { $0 }
         }
-        reports.forEach { $0.run() }
+        reports.forEach { $0.run(for: self) }
     }
 
     func stop() {
         let report = lock.withLock {
-            var report = takeAllLocked()
+            let teardown = takeAllLocked()
             pendingPort = nil
-            state = .stopped
-            report.state = .stopped
-            report.handler = onState
-            return report
+            matcher = WildcardMatcher(.empty)
+            return settleLocked(.stopped, teardown)
         }
-        report.run()
+        report.run(for: self)
+    }
+
+    private func settleLocked(_ newState: WildcardServiceState, _ teardown: Report = Report()) -> Report {
+        var report = teardown
+        state = newState
+        generation += 1
+        report.state = newState
+        report.generation = generation
+        report.handler = onState
+        return report
+    }
+
+    // Deliveries hop to the main actor after the lock is released, so one decided earlier can arrive later.
+    private func claimDelivery(_ generation: UInt64) -> Bool {
+        lock.withLock {
+            guard generation > deliveredGeneration else { return false }
+            deliveredGeneration = generation
+            return true
+        }
     }
 
     private func startPendingLocked() -> Report? {
@@ -96,8 +125,7 @@ final class WildcardDNSService: @unchecked Sendable {
             tcpParameters.allowLocalEndpointReuse = true
             tcp = try Self.listener(tcpParameters, port: port)
         } catch {
-            state = .failed(error.localizedDescription)
-            return Report(state: state, handler: onState)
+            return settleLocked(.failed(error.localizedDescription))
         }
         udpListener = udp
         tcpListener = tcp
@@ -127,7 +155,7 @@ final class WildcardDNSService: @unchecked Sendable {
                 connection.cancel()
                 return
             }
-            accept(connection, datagram: datagram)
+            accept(connection, from: id, datagram: datagram)
         }
     }
 
@@ -143,19 +171,14 @@ final class WildcardDNSService: @unchecked Sendable {
             case .ready:
                 readyListeners.insert(id)
                 guard readyListeners.count == 2 else { return nil }
-                state = .ready
-                return Report(state: .ready, handler: onState)
+                return settleLocked(.ready)
             case .failed(let error), .waiting(let error):
-                var report = takeAllLocked()
-                state = Self.state(for: error)
-                report.state = state
-                report.handler = onState
-                return report
+                return settleLocked(Self.state(for: error), takeAllLocked())
             default:
                 return nil
             }
         }
-        report?.run()
+        report?.run(for: self)
     }
 
     private static func state(for error: NWError) -> WildcardServiceState {
@@ -176,17 +199,23 @@ final class WildcardDNSService: @unchecked Sendable {
         return report
     }
 
-    private func accept(_ connection: NWConnection, datagram: Bool) {
-        let id = lock.withLock {
+    private func accept(_ connection: NWConnection, from listener: ObjectIdentifier, datagram: Bool) {
+        let accepted: UInt64? = lock.withLock {
+            let current = datagram ? udpListener : tcpListener
+            guard current.map(ObjectIdentifier.init) == listener else { return nil }
             nextConnectionID += 1
             connections[nextConnectionID] = Tracked(connection: connection, activity: 0)
             return nextConnectionID
         }
+        guard let id = accepted else {
+            connection.cancel()
+            return
+        }
         connection.stateUpdateHandler = { [weak self] newState in
             switch newState {
-            case .failed, .cancelled:
+            case .cancelled:
                 self?.forget(id)
-            case .waiting:
+            case .failed, .waiting:
                 connection.cancel()
             default:
                 break
@@ -226,19 +255,33 @@ final class WildcardDNSService: @unchecked Sendable {
             var buffer = buffer
             if let content { buffer.append(content) }
             let matcher = currentMatcher
+            var output = Data()
             for query in DNSFraming.split(&buffer) {
                 if let reply = WildcardDNSResponder.response(to: query, matcher: matcher) {
-                    connection.send(content: DNSFraming.frame(reply), completion: .idempotent)
+                    output.append(DNSFraming.frame(reply))
                 }
             }
             if isComplete {
                 connection.send(
-                    content: nil, contentContext: .finalMessage, isComplete: true,
+                    content: output.isEmpty ? nil : output, contentContext: .finalMessage, isComplete: true,
                     completion: .contentProcessed { _ in connection.cancel() })
                 return
             }
             touch(id)
-            receiveStream(on: connection, id: id, buffer: buffer)
+            guard !output.isEmpty else {
+                receiveStream(on: connection, id: id, buffer: buffer)
+                return
+            }
+            let remainder = buffer
+            connection.send(
+                content: output,
+                completion: .contentProcessed { [weak self] error in
+                    guard let self, error == nil else {
+                        connection.cancel()
+                        return
+                    }
+                    receiveStream(on: connection, id: id, buffer: remainder)
+                })
         }
     }
 
