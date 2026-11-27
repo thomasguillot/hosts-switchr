@@ -48,3 +48,9 @@ import Testing
     #expect(AppPaths.profilesMetadata().path.hasPrefix(root.path))
     #expect(root.lastPathComponent == "Hosts Switchr")
 }
+
+@Test func parse_stripsTrailingCarriageReturnFromLastToken() {
+    let file = HostsFile(parsing: "127.0.0.1 a.test\r\n")
+    #expect(file.mappings.first?.hostnames == ["a.test"])
+    #expect(file.serialized() == "127.0.0.1 a.test\r\n")
+}

@@ -27,7 +27,8 @@ public struct HostsFile: Equatable, Sendable {
         if trimmed.isEmpty { return HostsEntry(kind: .blank, raw: raw) }
         if trimmed.hasPrefix("#") { return HostsEntry(kind: .comment(trimmed), raw: raw) }
 
-        let beforeComment = raw.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
+        let body = raw.hasSuffix("\r") ? String(raw.dropLast()) : raw
+        let beforeComment = body.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
         let tokens = beforeComment.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
         guard let ip = tokens.first, tokens.count >= 2 else {
             return HostsEntry(kind: .comment(trimmed), raw: raw)

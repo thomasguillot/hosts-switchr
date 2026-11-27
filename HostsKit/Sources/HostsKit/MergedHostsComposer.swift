@@ -66,20 +66,24 @@ public struct MergedHostsComposer: Sendable {
         }.joined(separator: "\n")
     }
 
+    private static func shadowed(in texts: [String], under rules: [WildcardRule]) -> Set<String> {
+        texts.reduce(into: Set<String>()) {
+            $0.formUnion(WildcardCollector.shadowedNames(in: HostsFile(parsing: $1), under: rules))
+        }
+    }
+
     public func compose(
         localContent: String,
         localFragments: [NamedContent],
         sources: [SourceLayer],
         to tempURL: URL
     ) throws -> MergeStats {
-        let localFiles = ([localContent] + localFragments.map(\.content)).map { HostsFile(parsing: $0) }
-        let rules = WildcardCollector.rules(in: localFiles)
-        var shadowed: Set<String> = []
-        if !rules.isEmpty {
-            for file in localFiles { shadowed.formUnion(WildcardCollector.shadowedNames(in: file, under: rules)) }
-        }
+        let localRaw = [localContent] + localFragments.map(\.content)
+        let localTexts = localRaw.map(Self.commentingWildcards)
+        let rules = WildcardCollector.rules(in: localRaw.map { HostsFile(parsing: $0) })
+        var shadowed: Set<String> = rules.isEmpty ? [] : Self.shadowed(in: localTexts, under: rules)
 
-        var header = Self.commentingWildcards(localContent)
+        var header = localTexts[0]
         if !header.isEmpty && !header.hasSuffix("\n") { header += "\n" }
         try header.data(using: .utf8)!.write(to: tempURL, options: .atomic)
 
@@ -90,11 +94,11 @@ public struct MergedHostsComposer: Sendable {
         var perSource: [SourceStat] = []
         var total = 0
 
-        for fragment in localFragments {
+        for (index, fragment) in localFragments.enumerated() {
             let safeName = fragment.name.replacingOccurrences(of: "\r", with: " ")
                                         .replacingOccurrences(of: "\n", with: " ")
             try handle.write(contentsOf: Data("# \(safeName)\n".utf8))
-            let data = Data(Self.commentingWildcards(fragment.content).utf8)
+            let data = Data(localTexts[index + 1].utf8)
             try handle.write(contentsOf: data)
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
@@ -120,7 +124,7 @@ public struct MergedHostsComposer: Sendable {
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
-            let text = String(decoding: data, as: UTF8.self)
+            let text = (!rules.isEmpty || source.domainCount == nil) ? String(decoding: data, as: UTF8.self) : ""
             if !rules.isEmpty {
                 shadowed.formUnion(WildcardCollector.shadowedNames(in: HostsFile(parsing: text), under: rules))
             }
