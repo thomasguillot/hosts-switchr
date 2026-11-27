@@ -101,7 +101,7 @@ public struct MergedHostsComposer: Sendable {
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
-            let count = HostsScan.mappingLineCount(fragment.content)
+            let count = HostsScan.localDomainLineCount(fragment.content)
             perSource.append(SourceStat(name: fragment.name, domains: count,
                                         wildcards: HostsScan.wildcardLineCount(fragment.content)))
             total += count

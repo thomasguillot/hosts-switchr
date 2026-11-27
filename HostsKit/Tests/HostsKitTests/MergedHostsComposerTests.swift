@@ -224,3 +224,14 @@ private func tempDir() -> URL {
     _ = try MergedHostsComposer().compose(localContent: content, localFragments: [], sources: [], to: out)
     #expect(try String(contentsOf: out, encoding: .utf8) == content)
 }
+
+@Test func compose_domainCountsMatchThePreWildcardCountsExceptServedWildcards() throws {
+    let dir = tempDir()
+    let cache = dir.appendingPathComponent("s.hosts")
+    try "0.0.0.0 *.ads.example\n0.0.0.0 x.example\n127.0.0.1 *.test\n".write(to: cache, atomically: true, encoding: .utf8)
+    let fragment = NamedContent(name: "Dev", content: "127.0.0.1 *.test\n127.0.0.1 *.test www.test\n127.0.0.1 *.local")
+    let stats = try MergedHostsComposer().compose(
+        localContent: "", localFragments: [fragment],
+        sources: [SourceLayer(name: "S", cacheURL: cache, expectedHash: nil)], to: dir.appendingPathComponent("m.hosts"))
+    #expect(stats.perSource == [SourceStat(name: "Dev", domains: 2, wildcards: 1), SourceStat(name: "S", domains: 3)])
+}

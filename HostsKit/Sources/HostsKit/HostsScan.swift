@@ -4,11 +4,14 @@ public enum HostsScan {
     public static func mappingLineCount(_ text: String) -> Int {
         var count = 0
         text.enumerateLines { line, _ in
-            if case let .mapping(ip, hostnames) = HostsFile.parseLine(line).kind,
-               HostsValidator.isValidIP(ip),
-               !WildcardCollector.isWildcardAttempt(hostnames) { count += 1 }
+            if case let .mapping(ip, _) = HostsFile.parseLine(line).kind,
+               HostsValidator.isValidIP(ip) { count += 1 }
         }
         return count
+    }
+
+    public static func localDomainLineCount(_ text: String) -> Int {
+        mappingLineCount(text) - wildcardLineCount(text)
     }
 
     public static func wildcardLineCount(_ text: String) -> Int {
