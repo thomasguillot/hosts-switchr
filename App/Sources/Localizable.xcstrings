@@ -576,31 +576,31 @@
         }
       }
     },
-    "A line such as `127.0.0.1 *.test` sends every name under .test to that address, so a new local site needs no hosts line of its own. Wildcards work under .test and .internal only, in profiles and fragments but not in sources. Hosts Switchr answers these names itself, so they resolve only while the app is running. An explicit line for a name always wins over a wildcard. Before deleting the app, apply a profile without wildcards so the files it added to /etc/resolver are removed.": {
+    "A line such as `127.0.0.1 *.test` sends every name under .test to that address, so a new local site needs no hosts line of its own. Wildcards work under .test, or under a name inside .internal such as `*.app.internal`, in profiles and fragments but not in sources. Hosts Switchr answers these names itself, so they resolve only while the app is running. An explicit line for a name always wins over a wildcard. Wildcard domains assume one person uses Hosts Switchr on the Mac. Before deleting the app, apply a profile without wildcards so the files it added to /etc/resolver are removed.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A line such as `127.0.0.1 *.test` sends every name under .test to that address, so a new local site needs no hosts line of its own. Wildcards work under .test and .internal only, in profiles and fragments but not in sources. Hosts Switchr answers these names itself, so they resolve only while the app is running. An explicit line for a name always wins over a wildcard. Before deleting the app, apply a profile without wildcards so the files it added to /etc/resolver are removed."
+            "value": "A line such as `127.0.0.1 *.test` sends every name under .test to that address, so a new local site needs no hosts line of its own. Wildcards work under .test, or under a name inside .internal such as `*.app.internal`, in profiles and fragments but not in sources. Hosts Switchr answers these names itself, so they resolve only while the app is running. An explicit line for a name always wins over a wildcard. Wildcard domains assume one person uses Hosts Switchr on the Mac. Before deleting the app, apply a profile without wildcards so the files it added to /etc/resolver are removed."
           }
         },
         "en-GB": {
           "stringUnit": {
             "state": "translated",
-            "value": "A line such as `127.0.0.1 *.test` sends every name under .test to that address, so a new local site needs no hosts line of its own. Wildcards work under .test and .internal only, in profiles and fragments but not in sources. Hosts Switchr answers these names itself, so they resolve only while the app is running. An explicit line for a name always wins over a wildcard. Before deleting the app, apply a profile without wildcards so the files it added to /etc/resolver are removed."
+            "value": "A line such as `127.0.0.1 *.test` sends every name under .test to that address, so a new local site needs no hosts line of its own. Wildcards work under .test, or under a name inside .internal such as `*.app.internal`, in profiles and fragments but not in sources. Hosts Switchr answers these names itself, so they resolve only while the app is running. An explicit line for a name always wins over a wildcard. Wildcard domains assume one person uses Hosts Switchr on the Mac. Before deleting the app, apply a profile without wildcards so the files it added to /etc/resolver are removed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Una línea como `127.0.0.1 *.test` envía todos los nombres bajo .test a esa dirección, así que un sitio local nuevo no necesita su propia línea en hosts. Los comodines funcionan solo bajo .test y .internal, en perfiles y fragmentos, pero no en fuentes. Hosts Switchr responde a esos nombres por sí mismo, por lo que solo se resuelven mientras la app está abierta. Una línea explícita para un nombre siempre prevalece sobre un comodín. Antes de eliminar la app, aplica un perfil sin comodines para que se borren los archivos que añadió a /etc/resolver."
+            "value": "Una línea como `127.0.0.1 *.test` envía todos los nombres bajo .test a esa dirección, así que un sitio local nuevo no necesita su propia línea en hosts. Los comodines funcionan bajo .test, o bajo un nombre dentro de .internal como `*.app.internal`, en perfiles y fragmentos, pero no en fuentes. Hosts Switchr responde a esos nombres por sí mismo, por lo que solo se resuelven mientras la app está abierta. Una línea explícita para un nombre siempre prevalece sobre un comodín. Los dominios comodín dan por hecho que una sola persona usa Hosts Switchr en el Mac. Antes de eliminar la app, aplica un perfil sin comodines para que se borren los archivos que añadió a /etc/resolver."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Une ligne comme `127.0.0.1 *.test` envoie tous les noms sous .test vers cette adresse, ce qui évite d'écrire une ligne hosts pour chaque nouveau site local. Les jokers ne fonctionnent que sous .test et .internal, dans les profils et les fragments, mais pas dans les sources. Hosts Switchr répond lui-même à ces noms : ils ne se résolvent que tant que l'app est ouverte. Une ligne explicite pour un nom l'emporte toujours sur un joker. Avant de supprimer l'app, appliquez un profil sans joker pour que les fichiers qu'elle a ajoutés dans /etc/resolver soient supprimés."
+            "value": "Une ligne comme `127.0.0.1 *.test` envoie tous les noms sous .test vers cette adresse, ce qui évite d'écrire une ligne hosts pour chaque nouveau site local. Les jokers fonctionnent sous .test, ou sous un nom à l'intérieur de .internal comme `*.app.internal`, dans les profils et les fragments, mais pas dans les sources. Hosts Switchr répond lui-même à ces noms : ils ne se résolvent que tant que l'app est ouverte. Une ligne explicite pour un nom l'emporte toujours sur un joker. Les domaines joker supposent qu'une seule personne utilise Hosts Switchr sur le Mac. Avant de supprimer l'app, appliquez un profil sans joker pour que les fichiers qu'elle a ajoutés dans /etc/resolver soient supprimés."
           }
         }
       }

@@ -41,11 +41,13 @@ struct DocumentationView: View {
 
                 section("Wildcard domains", """
                 A line such as `127.0.0.1 *.test` sends every name under .test to that address, \
-                so a new local site needs no hosts line of its own. Wildcards work under .test \
-                and .internal only, in profiles and fragments but not in sources. Hosts Switchr \
-                answers these names itself, so they resolve only while the app is running. An \
-                explicit line for a name always wins over a wildcard. Before deleting the app, \
-                apply a profile without wildcards so the files it added to /etc/resolver are removed.
+                so a new local site needs no hosts line of its own. Wildcards work under .test, \
+                or under a name inside .internal such as `*.app.internal`, in profiles and \
+                fragments but not in sources. Hosts Switchr answers these names itself, so they \
+                resolve only while the app is running. An explicit line for a name always wins \
+                over a wildcard. Wildcard domains assume one person uses Hosts Switchr on the Mac. \
+                Before deleting the app, apply a profile without wildcards so the files it added \
+                to /etc/resolver are removed.
                 """)
 
                 section("Menu bar & Settings", """
