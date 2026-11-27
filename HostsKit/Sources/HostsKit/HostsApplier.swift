@@ -1,5 +1,14 @@
 import Foundation
 
+public struct HostsApplyResult: Equatable, Sendable {
+    public let backupURL: URL?
+    public let resolverFailed: Bool
+    public init(backupURL: URL?, resolverFailed: Bool) {
+        self.backupURL = backupURL
+        self.resolverFailed = resolverFailed
+    }
+}
+
 public final class HostsApplier: @unchecked Sendable {
     private let runner: PrivilegedRunner
     private let backupsDir: URL
@@ -15,24 +24,27 @@ public final class HostsApplier: @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    /// Returns nil when the post-commit copy-out failed (apply succeeded, no rollback snapshot exists).
+    /// `backupURL` is nil when the post-commit copy-out failed (apply succeeded, no rollback snapshot exists).
     @discardableResult
-    public func apply(stagedURL: URL) throws -> URL? {
+    public func apply(
+        stagedURL: URL, resolverWrites: [ResolverWrite] = [], resolverRemovals: [String] = []
+    ) throws -> HostsApplyResult {
         try fileManager.createDirectory(at: backupsDir, withIntermediateDirectories: true)
         // Rethrows on privileged failure — /etc/hosts untouched, no backup created.
-        let bakTmpPath = try runner.apply(ApplyRequest(stagedPath: stagedURL.path))
+        let result = try runner.apply(ApplyRequest(
+            stagedPath: stagedURL.path, resolverWrites: resolverWrites, resolverRemovals: resolverRemovals))
         // Per-apply UUID: unpredictable path so a local attacker can't pre-plant a symlink to redirect a write.
         let backupURL = backupsDir.appendingPathComponent("etc-hosts-\(UUID().uuidString).bak", isDirectory: false)
         do {
-            try fileManager.copyItem(at: URL(fileURLWithPath: bakTmpPath), to: backupURL)
+            try fileManager.copyItem(at: URL(fileURLWithPath: result.snapshotPath), to: backupURL)
             try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: backupURL.path)
         } catch {
             // Apply already committed, so copy-out failure must not throw. Remove any partial/mis-permissioned copy; return nil and skip pruning so existing real backups survive.
             try? fileManager.removeItem(at: backupURL)
-            return nil
+            return HostsApplyResult(backupURL: nil, resolverFailed: result.resolverFailed)
         }
         pruneBackups(keeping: backupURL)
-        return backupURL
+        return HostsApplyResult(backupURL: backupURL, resolverFailed: result.resolverFailed)
     }
 
     // `current` is excluded from deletion regardless of mtime so a future-dated older backup can't evict it. Skips symlinks (incl. the dir itself).
