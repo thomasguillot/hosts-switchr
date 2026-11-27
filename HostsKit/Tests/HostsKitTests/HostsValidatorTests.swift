@@ -79,3 +79,17 @@ import Testing
     let w = HostsValidator.validate(HostsFile(parsing: "10.0.0.5 api.test"), inheritedWildcards: inherited)
     #expect(w == [HostsWarning(line: 1, message: "api.test overrides *.test")])
 }
+
+@Test func validate_apexIsNotCoveredByWildcard() {
+    #expect(HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.5 test")).isEmpty)
+}
+
+@Test func validate_apexOfNestedWildcardFallsToParentRule_clean() {
+    let file = HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.5 *.app.test\n127.0.0.1 app.test")
+    #expect(HostsValidator.validate(file).isEmpty)
+}
+
+@Test func validate_apexOfNestedWildcardOverridesParentRule_warns() {
+    let file = HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.5 *.app.test\n10.0.0.5 app.test")
+    #expect(HostsValidator.validate(file) == [HostsWarning(line: 3, message: "app.test overrides *.test")])
+}

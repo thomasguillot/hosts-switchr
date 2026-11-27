@@ -71,7 +71,7 @@ public enum HostsValidator {
             for host in hostnames where !host.contains("*") {
                 let name = host.lowercased()
                 let covering = rules
-                    .filter { name == $0.suffix || name.hasSuffix("." + $0.suffix) }
+                    .filter { name.hasSuffix("." + $0.suffix) }
                     .max { $0.suffix.count < $1.suffix.count }
                 guard let rule = covering else { continue }
                 let ruleIP = ip.contains(":") ? rule.ipv6 : rule.ipv4

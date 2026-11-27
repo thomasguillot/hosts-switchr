@@ -122,25 +122,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ overrides %@"
+            "value" : "%1$@ overrides %2$@"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ overrides %@"
+            "value" : "%1$@ overrides %2$@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "%@ sustituye a %@"
+            "value" : "%1$@ sustituye a %2$@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "%@ remplace %@"
+            "value" : "%1$@ remplace %2$@"
           }
         }
       }
