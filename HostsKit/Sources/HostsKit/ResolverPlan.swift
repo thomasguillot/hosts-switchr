@@ -100,6 +100,8 @@ public struct ResolverPlan: Equatable, Sendable {
         let expected = ResolverFile.contents(port: recorded.port)
         if recorded.resolverDomains.contains(where: { existing[$0] != expected }) { return true }
         let plan = make(desired: recorded.resolverDomains, port: recorded.port, existing: existing)
-        return !plan.writes.isEmpty || !plan.removals.isEmpty
+        if !plan.writes.isEmpty || !plan.removals.isEmpty { return true }
+        let wanted = make(desired: current.rules.map(\.suffix), port: recorded.port, existing: existing)
+        return !Set(wanted.writes + wanted.unchanged).isSubset(of: recorded.resolverDomains)
     }
 }

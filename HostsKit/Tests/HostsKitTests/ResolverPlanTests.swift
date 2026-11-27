@@ -78,6 +78,14 @@ import Testing
         #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: ["test": ours, "old.test": ours]))
     }
 
+    @Test func needsReapply_whenACurrentSuffixIsNeitherRecordedNorForeign() {
+        let current = WildcardSet(rules: [WildcardRule(suffix: "test", ipv4: "127.0.0.1", ipv6: nil)], shadowedNames: [])
+        let d = WildcardDeployment(served: .empty, resolverDomains: [], port: 53535)
+        #expect(!ResolverPlan.needsReapply(recorded: d, current: current, existing: ["test": "nameserver 127.0.0.1\n"]))
+        #expect(ResolverPlan.needsReapply(recorded: d, current: current, existing: [:]))
+        #expect(!ResolverPlan.needsReapply(recorded: d, current: current, existing: nil))
+    }
+
     @Test func unreadableDirectoryReadsAsNilAndPlansNothingButForeign() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("resolver-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
