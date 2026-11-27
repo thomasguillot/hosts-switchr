@@ -76,7 +76,7 @@ public final class AuthorizationPrivilegedRunner: PrivilegedRunner, @unchecked S
             temps.append(temp)
             steps += [
                 "cp \(singleQuote(write.stagedPath)) \(temp)", "chown root:wheel \(temp)", "chmod 644 \(temp)",
-                ifOurs(target), "mv \(temp) \(target)",
+                ifOurs(target), "mv -h \(temp) \(target)",
             ]
         }
         for domain in request.resolverRemovals {

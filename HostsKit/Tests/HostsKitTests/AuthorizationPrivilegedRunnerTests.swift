@@ -42,7 +42,7 @@ import Testing
             + "&& chmod 644 '/etc/resolver/.hsk-tmp.U1' "
             + "&& [ ! -L '/etc/resolver/test' ] && { [ ! -e '/etc/resolver/test' ] || { [ -f '/etc/resolver/test' ] "
             + "&& [ \"$(head -n 1 '/etc/resolver/test')\" = '# Managed by Hosts Switchr. Removed when no wildcard needs it.' ]; }; } "
-            + "&& mv '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/test' "
+            + "&& mv -h '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/test' "
             + "&& [ ! -L '/etc/resolver/old.test' ] && { [ ! -e '/etc/resolver/old.test' ] || { [ -f '/etc/resolver/old.test' ] "
             + "&& [ \"$(head -n 1 '/etc/resolver/old.test')\" = '# Managed by Hosts Switchr. Removed when no wildcard needs it.' ] "
             + "&& rm -f '/etc/resolver/old.test'; }; }; "
@@ -54,8 +54,8 @@ import Testing
         let request = ApplyRequest(stagedPath: "/tmp/s.hosts", resolverWrites: [
             ResolverWrite(domain: "test", stagedPath: "/tmp/r"), ResolverWrite(domain: "internal", stagedPath: "/tmp/r")])
         let c = command(request)
-        #expect(c.contains("mv '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/test'"))
-        #expect(c.contains("mv '/etc/resolver/.hsk-tmp.U2' '/etc/resolver/internal'"))
+        #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/test'"))
+        #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U2' '/etc/resolver/internal'"))
         #expect(c.contains("} || { rm -f '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/.hsk-tmp.U2'; rc=3; }; "))
     }
 
@@ -82,7 +82,7 @@ import Testing
                                    resolverRemovals: ["a.internal", "b.internal"])
         let c = command(request)
         #expect(c.contains("&& chmod 644 '/etc/resolver/.hsk-tmp.U1' && " + writeGuard("/etc/resolver/app.test")
-            + " && mv '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/app.test' && "))
+            + " && mv -h '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/app.test' && "))
         #expect(c.contains(" && " + removal("/etc/resolver/a.internal") + " && " + removal("/etc/resolver/b.internal") + "; }"))
         #expect(c.components(separatedBy: "rm -f '/etc/resolver/").count == 4)
         #expect(c.components(separatedBy: " ] && rm -f '/etc/resolver/").count == 3)
@@ -98,6 +98,14 @@ import Testing
         let script = try #require(NSAppleScript(source: "return \"\(literal)\""))
         #expect(script.executeAndReturnError(&error).stringValue == c)
         #expect(error == nil)
+    }
+
+    @Test func onlyResolverMovesUseNoFollowMv() {
+        let c = command(ApplyRequest(stagedPath: "/tmp/s.hosts",
+                                     resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")]))
+        #expect(c.contains("&& mv '/etc/hosts.hsk-tmp.T' /etc/hosts; then "))
+        #expect(c.components(separatedBy: "mv -h ").count == 2)
+        #expect(c.components(separatedBy: "mv ").count == 3)
     }
 
     @Test func validateRejectsUnvalidatedDomains() throws {
@@ -234,6 +242,25 @@ import Testing
         #expect(try String(contentsOf: elsewhere, encoding: .utf8) == box.ours)
         #expect(try FileManager.default.contentsOfDirectory(atPath: box.file("internal").path).isEmpty)
         #expect(box.temps().isEmpty)
+    }
+
+    @Test(arguments: ["/bin/sh", "/bin/dash"])
+    func noFollowMvReplacesASymlinkToADirectoryInsteadOfMovingIntoIt(shell: String) throws {
+        let box = try Sandbox()
+        defer { box.clean() }
+        let elsewhere = box.root.appendingPathComponent("elsewhere", isDirectory: true)
+        try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        try box.put(".hsk-tmp.U1", box.ours)
+        try FileManager.default.createSymbolicLink(at: box.file("test"), withDestinationURL: elsewhere)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: shell)
+        process.arguments = ["-c", "mv -h '\(box.file(".hsk-tmp.U1").path)' '\(box.file("test").path)'"]
+        try process.run()
+        process.waitUntilExit()
+
+        #expect(process.terminationStatus == 0)
+        #expect(box.read("test") == box.ours)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: elsewhere.path).isEmpty)
     }
 
     @Test(arguments: ["/bin/sh", "/bin/dash"])
