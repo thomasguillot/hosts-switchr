@@ -27,7 +27,6 @@ public final class AuthorizationPrivilegedRunner: PrivilegedRunner, @unchecked S
             throw RunnerError.scriptFailed("Could not construct AppleScript")
         }
         script.executeAndReturnError(&errorInfo)
-        // A reported error without a number must still fail closed, never read as success.
         let number = errorInfo.map { ($0[NSAppleScript.errorNumber] as? Int) ?? -1 }
         let message = errorInfo?[NSAppleScript.errorMessage] as? String
         return try Self.result(errorNumber: number, message: message, snapshotPath: bakTmp)
@@ -62,14 +61,16 @@ public final class AuthorizationPrivilegedRunner: PrivilegedRunner, @unchecked S
         }
 
         // Resolver changes run only after the hosts mv commits; exit 3 tells the caller hosts changed but resolvers may not have.
-        // Root re-checks ownership just before each mv/rm (the plan may be stale); `find -P` never follows a symlinked /etc/resolver.
         let marker = singleQuote(ResolverFile.marker)
         func ifOurs(_ target: String, then action: String = "") -> String {
             "[ ! -L \(target) ] && { [ ! -e \(target) ] || { [ -f \(target) ] "
                 + "&& [ \"$(head -n 1 \(target))\" = \(marker) ]\(action); }; }"
         }
         var temps: [String] = []
-        var steps = ["[ ! -L /etc/resolver ]", "mkdir -p /etc/resolver"]
+        var steps = [
+            "[ ! -L /etc/resolver ]", "mkdir -m 755 -p /etc/resolver", "[ -O /etc/resolver ]",
+            "[ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ]",
+        ]
         for write in request.resolverWrites {
             let temp = singleQuote(resolverTmp())
             let target = singleQuote("/etc/resolver/\(write.domain)")
@@ -84,19 +85,20 @@ public final class AuthorizationPrivilegedRunner: PrivilegedRunner, @unchecked S
             steps.append(ifOurs(target, then: " && rm -f \(target)"))
         }
         let reclaim = "find -P /etc/resolver -maxdepth 1 -type f -name '.hsk-tmp.*' -mmin +5 -delete 2>/dev/null"
-        let onFailure = temps.isEmpty ? "rc=3;" : "rm -f \(temps.joined(separator: " ")); rc=3;"
+        let failed = "rc=\(String(resolverFailedExitCode));"
+        let onFailure = temps.isEmpty ? failed : "rm -f \(temps.joined(separator: " ")); \(failed)"
         return "\(cleanup); if \(criticalChain); then rc=0; { \(reclaim); \(steps.joined(separator: " && ")); } "
             + "|| { \(onFailure) }; dscacheutil -flushcache; killall -HUP mDNSResponder; exit $rc; " + tail
     }
 
     static func result(errorNumber: Int?, message: String?, snapshotPath: String) throws -> PrivilegedApplyResult {
         guard let errorNumber else {
-            return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: false)
+            return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: false, message: nil)
         }
         guard errorNumber == Int(resolverFailedExitCode) else {
             throw RunnerError.scriptFailed(message ?? "Unknown error")
         }
-        return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: true)
+        return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: true, message: message)
     }
 
     static func singleQuote(_ path: String) -> String {

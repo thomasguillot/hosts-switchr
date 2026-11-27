@@ -15,6 +15,7 @@ import Testing
         + "&& cp /etc/hosts '/etc/hosts.hsk-bak.B' && chmod 644 '/etc/hosts.hsk-bak.B' && mv '/etc/hosts.hsk-tmp.T' /etc/hosts; then "
     private let tail = "else rm -f '/etc/hosts.hsk-tmp.T' '/etc/hosts.hsk-bak.B'; false; fi"
     private let marker = "'# Managed by Hosts Switchr. Removed when no wildcard needs it.'"
+    private let resolverDirChecks = "[ ! -L /etc/resolver ] && mkdir -m 755 -p /etc/resolver && [ -O /etc/resolver ] && [ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ]"
     private let reclaim = "find -P /etc/resolver -maxdepth 1 -type f -name '.hsk-tmp.*' -mmin +5 -delete 2>/dev/null; "
 
     private func writeGuard(_ target: String) -> String {
@@ -37,7 +38,8 @@ import Testing
                                    resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")],
                                    resolverRemovals: ["old.test"])
         #expect(command(request) == head + "rc=0; { " + reclaim
-            + "[ ! -L /etc/resolver ] && mkdir -p /etc/resolver "
+            + "[ ! -L /etc/resolver ] && mkdir -m 755 -p /etc/resolver && [ -O /etc/resolver ] "
+            + "&& [ \"$(find -P /etc/resolver -maxdepth 0 ! -perm +022)\" = /etc/resolver ] "
             + "&& cp '/tmp/r' '/etc/resolver/.hsk-tmp.U1' && chown root:wheel '/etc/resolver/.hsk-tmp.U1' "
             + "&& chmod 644 '/etc/resolver/.hsk-tmp.U1' "
             + "&& [ ! -L '/etc/resolver/test' ] && { [ ! -e '/etc/resolver/test' ] || { [ -f '/etc/resolver/test' ] "
@@ -61,17 +63,17 @@ import Testing
 
     @Test func removalOnlyFailureBranchHasNoTemps() {
         let c = command(ApplyRequest(stagedPath: "/tmp/s.hosts", resolverRemovals: ["test"]))
-        #expect(c.contains("[ ! -L /etc/resolver ] && mkdir -p /etc/resolver && "
+        #expect(c.contains(resolverDirChecks + " && "
             + removal("/etc/resolver/test") + "; } || { rc=3; }; "))
     }
 
-    @Test func symlinkedResolverDirectoryIsRefusedBeforeMkdir() {
+    @Test func resolverDirectoryMustBeARootOnlyNonSymlinkBeforeAnyWrite() {
         for request in [
             ApplyRequest(stagedPath: "/tmp/s.hosts", resolverWrites: [ResolverWrite(domain: "test", stagedPath: "/tmp/r")]),
             ApplyRequest(stagedPath: "/tmp/s.hosts", resolverRemovals: ["test"]),
         ] {
             let c = command(request)
-            #expect(c.contains("; [ ! -L /etc/resolver ] && mkdir -p /etc/resolver && "))
+            #expect(c.contains("; " + resolverDirChecks + " && "))
             #expect(!c.contains("find -H /etc/resolver"))
         }
     }
@@ -124,9 +126,9 @@ import Testing
 
     @Test func resultDistinguishesHostsFailureFromResolverFailure() throws {
         #expect(try AuthorizationPrivilegedRunner.result(errorNumber: nil, message: nil, snapshotPath: "/b")
-            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: false))
+            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: false, message: nil))
         #expect(try AuthorizationPrivilegedRunner.result(errorNumber: 3, message: "x", snapshotPath: "/b")
-            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: true))
+            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: true, message: "x"))
         #expect(throws: RunnerError.scriptFailed("boom")) {
             try AuthorizationPrivilegedRunner.result(errorNumber: 1, message: "boom", snapshotPath: "/b")
         }
@@ -165,7 +167,9 @@ import Testing
             ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0.hasPrefix(".hsk-tmp.") }
         }
 
-        func run(_ shell: String, writes: [String] = [], removals: [String] = []) throws -> Int32 {
+        func run(
+            _ shell: String, writes: [String] = [], removals: [String] = [], in target: URL? = nil, prefix: String = ""
+        ) throws -> Int32 {
             var n = 0
             let full = AuthorizationPrivilegedRunner.command(
                 for: ApplyRequest(stagedPath: "/tmp/s.hosts",
@@ -176,17 +180,25 @@ import Testing
             let start = try #require(full.range(of: "; then "))
             let end = try #require(full.range(of: " dscacheutil -flushcache"))
             let step = String(full[start.upperBound..<end.lowerBound])
-                .replacingOccurrences(of: "/etc/resolver", with: dir.path)
+                .replacingOccurrences(of: "/etc/resolver", with: (target ?? dir).path)
                 .replacingOccurrences(of: "chown root:wheel", with: ":")
             let process = Process()
             process.executableURL = URL(fileURLWithPath: shell)
-            process.arguments = ["-c", step + " exit $rc"]
+            process.arguments = ["-c", prefix + step + " exit $rc"]
             try process.run()
             process.waitUntilExit()
             return process.terminationStatus
         }
 
-        func clean() { try? FileManager.default.removeItem(at: root) }
+        func stale(_ url: URL) throws {
+            try ours.write(to: url, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-600)], ofItemAtPath: url.path)
+        }
+
+        func clean() {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: root)
+        }
     }
 
     @Test(arguments: ["/bin/sh", "/bin/dash"])
@@ -261,6 +273,60 @@ import Testing
         #expect(process.terminationStatus == 0)
         #expect(box.read("test") == box.ours)
         #expect(try FileManager.default.contentsOfDirectory(atPath: elsewhere.path).isEmpty)
+    }
+
+    @Test(arguments: ["/bin/sh", "/bin/dash"])
+    func refusesAGroupOrWorldWritableResolverDirectory(shell: String) throws {
+        let box = try Sandbox()
+        defer { box.clean() }
+        for mode in [0o777, 0o775, 0o757] {
+            try FileManager.default.createDirectory(at: box.dir, withIntermediateDirectories: true)
+            try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: box.dir.path)
+
+            #expect(try box.run(shell, writes: ["test"], removals: ["gone.test"]) == 3)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: box.dir.path).isEmpty)
+        }
+    }
+
+    @Test(arguments: ["/bin/sh", "/bin/dash"])
+    func refusesAResolverDirectoryOwnedBySomeoneElse(shell: String) throws {
+        let box = try Sandbox()
+        defer { box.clean() }
+        let rootOwned = URL(fileURLWithPath: "/var/empty", isDirectory: true)
+        let owner = try FileManager.default.attributesOfItem(atPath: rootOwned.path)[.ownerAccountID] as? NSNumber
+        try #require(owner?.uint32Value != getuid())
+
+        #expect(try box.run(shell, removals: ["gone.test"], in: rootOwned) == 3)
+        #expect(try box.run(shell, removals: ["gone.test"]) == 0)
+    }
+
+    @Test(arguments: ["/bin/sh", "/bin/dash"])
+    func createsTheResolverDirectoryRootOnlyWhateverTheUmask(shell: String) throws {
+        let box = try Sandbox()
+        defer { box.clean() }
+
+        #expect(try box.run(shell, writes: ["test"], prefix: "umask 000; ") == 0)
+        let mode = try FileManager.default.attributesOfItem(atPath: box.dir.path)[.posixPermissions] as? NSNumber
+        #expect(mode?.intValue == 0o755)
+        #expect(box.read("test") == box.ours)
+    }
+
+    @Test(arguments: ["/bin/sh", "/bin/dash"])
+    func reclaimDeletesStaleTempsInTheRealDirectoryOnly(shell: String) throws {
+        let box = try Sandbox()
+        defer { box.clean() }
+        try FileManager.default.createDirectory(at: box.dir, withIntermediateDirectories: true)
+        try box.stale(box.file(".hsk-tmp.OLD"))
+        #expect(try box.run(shell, removals: ["gone.test"]) == 0)
+        #expect(box.temps().isEmpty)
+
+        try FileManager.default.removeItem(at: box.dir)
+        let real = box.root.appendingPathComponent("real")
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        try box.stale(real.appendingPathComponent(".hsk-tmp.OLD"))
+        try FileManager.default.createSymbolicLink(at: box.dir, withDestinationURL: real)
+        #expect(try box.run(shell, removals: ["gone.test"]) == 3)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: real.path) == [".hsk-tmp.OLD"])
     }
 
     @Test(arguments: ["/bin/sh", "/bin/dash"])
