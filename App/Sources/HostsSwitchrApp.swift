@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         unhideOwnBundle()
         // The main window is suppressed, so bootstrap here to load/schedule on a quiet login-launch.
         model.bootstrap()
+        model.recheckWildcardsWhenMenusOpen()
         updateScheduler.start()
     }
 

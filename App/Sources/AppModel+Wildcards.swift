@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import HostsKit
 
 extension AppModel {
@@ -11,6 +11,19 @@ extension AppModel {
     func activeWildcardSet() -> WildcardSet {
         guard let id = activeProfileID, let p = profiles.first(where: { $0.id == id }) else { return .empty }
         return WildcardCollector.set(in: [HostsFile(parsing: p.content)] + fragmentFiles(of: p))
+    }
+
+    func recheckWildcards() {
+        guard wildcards.servesAnything else { return }
+        wildcards.recheck(appliedState?.wildcards, current: activeWildcardSet())
+        recomputeActiveStale()
+    }
+
+    func recheckWildcardsWhenMenusOpen() {
+        _ = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil,
+                                                   queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.recheckWildcards() }
+        }
     }
 
     private func fragmentFiles(of profile: Profile) -> [HostsFile] {

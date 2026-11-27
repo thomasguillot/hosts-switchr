@@ -9,6 +9,12 @@ struct PreparedResolver {
     let deployment: WildcardDeployment
 }
 
+struct AppliedWildcards {
+    let deployment: WildcardDeployment
+    var failure: String?
+    var notice: String?
+}
+
 @MainActor
 @Observable
 final class WildcardController {
@@ -39,7 +45,7 @@ final class WildcardController {
                                 removals: plan.removals, foreign: plan.foreign, deployment: deployment)
     }
 
-    func didApply(_ prepared: PreparedResolver, resolverFailed: Bool) -> (deployment: WildcardDeployment, message: String?) {
+    func didApply(_ prepared: PreparedResolver, resolverFailed: Bool) -> AppliedWildcards {
         let deployment = resolverFailed ? merged(over: prepared.deployment) : prepared.deployment
         served = deployment
         foreignDomains = prepared.foreign
@@ -48,25 +54,40 @@ final class WildcardController {
                                          existing: ResolverDirectory.read(resolverDirectory))
         serve(deployment.served, port: deployment.port)
         if resolverFailed {
-            return (deployment, String(localized: "The hosts file was updated, but wildcard domains couldn't be set up. Check that /etc/resolver is a folder owned by root and not writable by others, then apply again."))
+            return AppliedWildcards(deployment: deployment, failure: String(localized: "The hosts file was updated, but wildcard domains couldn't be updated. /etc/resolver may have changed or may not be safe to write to. Apply again to retry."))
         }
-        guard foreignDomains != alertedForeign else { return (deployment, nil) }
+        guard foreignDomains != alertedForeign else { return AppliedWildcards(deployment: deployment) }
         alertedForeign = foreignDomains
-        return (deployment, foreignDomains.isEmpty ? nil : foreignDomains.map(Self.foreignLine).joined(separator: "\n"))
+        return AppliedWildcards(deployment: deployment,
+                                notice: foreignDomains.isEmpty ? nil : foreignDomains.map(Self.foreignLine).joined(separator: "\n"))
     }
 
     @discardableResult
     func restore(_ loaded: WildcardDeployment?, current: WildcardSet) -> Bool {
-        let recorded = loaded?.isWithinPolicy == true ? loaded : nil
-        let deployment = recorded ?? WildcardDeployment(served: current, resolverDomains: [], port: WildcardDNS.defaultPort)
-        let existing = ResolverDirectory.read(resolverDirectory)
+        let deployment = Self.trusted(loaded)
+            ?? WildcardDeployment(served: current, resolverDomains: [], port: WildcardDNS.defaultPort)
         served = deployment
-        let suffixes = Set(deployment.served.rules.map(\.suffix)).union(current.rules.map(\.suffix))
-        foreignDomains = ResolverPlan.make(desired: Array(suffixes), port: deployment.port, existing: existing).foreign
+        recheck(loaded, current: current)
         alertedForeign = foreignDomains
-        resolverDrift = ResolverPlan.needsReapply(recorded: recorded, current: current, existing: existing)
         serve(deployment.served, port: deployment.port)
         return resolverDrift
+    }
+
+    var servesAnything: Bool {
+        guard let served else { return false }
+        return !served.served.isEmpty || !served.resolverDomains.isEmpty
+    }
+
+    func recheck(_ loaded: WildcardDeployment?, current: WildcardSet) {
+        guard let served else { return }
+        let existing = ResolverDirectory.read(resolverDirectory)
+        let suffixes = Set(served.served.rules.map(\.suffix)).union(current.rules.map(\.suffix))
+        foreignDomains = ResolverPlan.make(desired: Array(suffixes), port: served.port, existing: existing).foreign
+        resolverDrift = ResolverPlan.needsReapply(recorded: Self.trusted(loaded), current: current, existing: existing)
+    }
+
+    private static func trusted(_ loaded: WildcardDeployment?) -> WildcardDeployment? {
+        loaded?.isWithinPolicy == true ? loaded : nil
     }
 
     private func merged(over intended: WildcardDeployment) -> WildcardDeployment {

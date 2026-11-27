@@ -4466,31 +4466,31 @@
         }
       }
     },
-    "The hosts file was updated, but wildcard domains couldn't be set up. Check that /etc/resolver is a folder owned by root and not writable by others, then apply again.": {
+    "The hosts file was updated, but wildcard domains couldn't be updated. /etc/resolver may have changed or may not be safe to write to. Apply again to retry.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The hosts file was updated, but wildcard domains couldn't be set up. Check that /etc/resolver is a folder owned by root and not writable by others, then apply again."
+            "value": "The hosts file was updated, but wildcard domains couldn't be updated. /etc/resolver may have changed or may not be safe to write to. Apply again to retry."
           }
         },
         "en-GB": {
           "stringUnit": {
             "state": "translated",
-            "value": "The hosts file was updated, but wildcard domains couldn't be set up. Check that /etc/resolver is a folder owned by root and not writable by others, then apply again."
+            "value": "The hosts file was updated, but wildcard domains couldn't be updated. /etc/resolver may have changed or may not be safe to write to. Apply again to retry."
           }
         },
         "es": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Se actualizó el archivo hosts, pero no se pudieron configurar los dominios comodín. Comprueba que /etc/resolver sea una carpeta propiedad de root y que otros no puedan modificarla, y vuelve a aplicar."
+            "value": "Se actualizó el archivo hosts, pero no se pudieron actualizar los dominios comodín. Puede que /etc/resolver haya cambiado o que no sea seguro escribir en él. Vuelve a aplicar para reintentarlo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Le fichier hosts a été mis à jour, mais les domaines joker n’ont pas pu être configurés. Vérifiez que /etc/resolver est un dossier appartenant à root et non modifiable par les autres, puis appliquez à nouveau."
+            "value": "Le fichier hosts a été mis à jour, mais les domaines joker n’ont pas pu être mis à jour. /etc/resolver a peut-être changé, ou il n’est peut-être pas sûr d’y écrire. Appliquez à nouveau pour réessayer."
           }
         }
       }

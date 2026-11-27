@@ -468,14 +468,15 @@ final class AppModel {
         let prepared = wildcards.prepare(set)
         let result = try applier.apply(stagedURL: temp, resolverWrites: prepared.writes, resolverRemovals: prepared.removals)
         let applied = wildcards.didApply(prepared, resolverFailed: result.resolverFailed)
-        if let message = applied.message { lastError = message }
+        if let failure = applied.failure { lastError = failure }
+        if let notice = applied.notice { notify("Hosts Switchr", notice) }
         return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen, wildcards: applied.deployment, resolverFailed: result.resolverFailed)
     }
 
     private(set) var appliedState: AppliedProfileState?
 
     // No snapshot (pre-first-apply) falls back to insert: fail-safe toward stale, never toward clean.
-    private func recomputeActiveStale() {
+    func recomputeActiveStale() {
         guard let id = activeProfileID else { return }
         guard let a = appliedState, a.profile.id == id,
               let cur = profiles.first(where: { $0.id == id }) else { staleProfileIDs.insert(id); return }
