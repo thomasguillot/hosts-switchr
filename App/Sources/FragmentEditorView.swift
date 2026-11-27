@@ -30,7 +30,7 @@ struct FragmentEditorView: View {
             if !warnings.isEmpty {
                 Divider()
                 VStack(alignment: .leading, spacing: 2) {
-                    ForEach(warnings, id: \.line) { w in
+                    ForEach(Array(warnings.enumerated()), id: \.offset) { _, w in
                         Label("Line \(w.line): \(w.message)", systemImage: "exclamationmark.triangle")
                             .font(.caption).foregroundStyle(.orange)
                     }

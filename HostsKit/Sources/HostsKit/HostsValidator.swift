@@ -39,8 +39,11 @@ public enum HostsValidator {
                 }
             }
         }
-        warnings += overrideWarnings(in: file, inherited: inheritedWildcards)
-        return warnings
+        let overrides = overrideWarnings(in: file, inherited: inheritedWildcards)
+        guard !overrides.isEmpty else { return warnings }
+        return (warnings + overrides).enumerated()
+            .sorted { ($0.element.line, $0.offset) < ($1.element.line, $1.offset) }
+            .map(\.element)
     }
 
     private static func wildcardWarning(_ hostnames: [String]) -> String? {

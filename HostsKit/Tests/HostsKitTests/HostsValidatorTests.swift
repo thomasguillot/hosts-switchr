@@ -99,3 +99,8 @@ import Testing
     let file = HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.5 *.app.test\n10.0.0.5 app.test")
     #expect(HostsValidator.validate(file) == [HostsWarning(line: 3, message: "app.test overrides *.test")])
 }
+
+@Test func validate_warningsAreInLineOrder() {
+    let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.1 a.test b.test\n999.1.1.1 x"))
+    #expect(w.map(\.line) == [2, 2, 3])
+}
