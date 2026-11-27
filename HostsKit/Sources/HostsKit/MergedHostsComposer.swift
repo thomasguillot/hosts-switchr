@@ -33,15 +33,20 @@ public struct NamedContent: Sendable, Equatable {
 public struct SourceStat: Sendable, Equatable {
     public let name: String
     public let domains: Int
-    public init(name: String, domains: Int) { self.name = name; self.domains = domains }
+    public let wildcards: Int
+    public init(name: String, domains: Int, wildcards: Int = 0) {
+        self.name = name; self.domains = domains; self.wildcards = wildcards
+    }
 }
 
 public struct MergeStats: Sendable, Equatable {
     public let totalDomains: Int
     public let perSource: [SourceStat]
-    public init(totalDomains: Int, perSource: [SourceStat]) {
+    public let wildcards: WildcardSet
+    public init(totalDomains: Int, perSource: [SourceStat], wildcards: WildcardSet = .empty) {
         self.totalDomains = totalDomains
         self.perSource = perSource
+        self.wildcards = wildcards
     }
 }
 
@@ -50,13 +55,31 @@ public struct MergedHostsComposer: Sendable {
     private nonisolated(unsafe) let fileManager: FileManager
     public init(fileManager: FileManager = .default) { self.fileManager = fileManager }
 
+    private static func commentingWildcards(_ text: String) -> String {
+        guard text.contains("*") else { return text }
+        return text.components(separatedBy: "\n").map { line in
+            guard case let .mapping(ip, hostnames) = HostsFile.parseLine(line).kind,
+                  WildcardCollector.isWildcardAttempt(hostnames) else { return line }
+            let note = WildcardCollector.collectableSuffix(ip: ip, hostnames: hostnames) != nil
+                ? "wildcard, served by Hosts Switchr" : "wildcard ignored"
+            return "# " + line.trimmingCharacters(in: .whitespacesAndNewlines) + "  (" + note + ")"
+        }.joined(separator: "\n")
+    }
+
     public func compose(
         localContent: String,
         localFragments: [NamedContent],
         sources: [SourceLayer],
         to tempURL: URL
     ) throws -> MergeStats {
-        var header = localContent
+        let localFiles = ([localContent] + localFragments.map(\.content)).map { HostsFile(parsing: $0) }
+        let rules = WildcardCollector.rules(in: localFiles)
+        var shadowed: Set<String> = []
+        if !rules.isEmpty {
+            for file in localFiles { shadowed.formUnion(WildcardCollector.shadowedNames(in: file, under: rules)) }
+        }
+
+        var header = Self.commentingWildcards(localContent)
         if !header.isEmpty && !header.hasSuffix("\n") { header += "\n" }
         try header.data(using: .utf8)!.write(to: tempURL, options: .atomic)
 
@@ -71,13 +94,14 @@ public struct MergedHostsComposer: Sendable {
             let safeName = fragment.name.replacingOccurrences(of: "\r", with: " ")
                                         .replacingOccurrences(of: "\n", with: " ")
             try handle.write(contentsOf: Data("# \(safeName)\n".utf8))
-            let data = Data(fragment.content.utf8)
+            let data = Data(Self.commentingWildcards(fragment.content).utf8)
             try handle.write(contentsOf: data)
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
             let count = HostsScan.mappingLineCount(fragment.content)
-            perSource.append(SourceStat(name: fragment.name, domains: count))
+            perSource.append(SourceStat(name: fragment.name, domains: count,
+                                        wildcards: HostsScan.wildcardLineCount(fragment.content)))
             total += count
         }
 
@@ -96,10 +120,15 @@ public struct MergedHostsComposer: Sendable {
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
-            let count = source.domainCount ?? HostsScan.mappingLineCount(String(decoding: data, as: UTF8.self))
+            let text = String(decoding: data, as: UTF8.self)
+            if !rules.isEmpty {
+                shadowed.formUnion(WildcardCollector.shadowedNames(in: HostsFile(parsing: text), under: rules))
+            }
+            let count = source.domainCount ?? HostsScan.mappingLineCount(text)
             perSource.append(SourceStat(name: source.name, domains: count))
             total += count
         }
-        return MergeStats(totalDomains: total, perSource: perSource)
+        return MergeStats(totalDomains: total, perSource: perSource,
+                          wildcards: WildcardSet(rules: rules, shadowedNames: shadowed))
     }
 }

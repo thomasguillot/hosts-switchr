@@ -149,3 +149,53 @@ private func tempDir() -> URL {
     #expect(out == "127.0.0.1 a\n")
     #expect(stats.perSource.isEmpty)
 }
+
+@Test func compose_localWildcardBecomesCommentAndRule() throws {
+    let out = tempDir().appendingPathComponent("merged.hosts")
+    let stats = try MergedHostsComposer().compose(
+        localContent: "127.0.0.1 *.test\n127.0.0.1 a.test", localFragments: [], sources: [], to: out)
+    #expect(try String(contentsOf: out, encoding: .utf8)
+        == "# 127.0.0.1 *.test  (wildcard, served by Hosts Switchr)\n127.0.0.1 a.test\n")
+    #expect(stats.wildcards.rules == [WildcardRule(suffix: "test", ipv4: "127.0.0.1", ipv6: nil)])
+    #expect(stats.wildcards.shadowedNames == ["a.test"])
+}
+
+@Test func compose_fragmentWildcardIsCountedSeparately() throws {
+    let out = tempDir().appendingPathComponent("merged.hosts")
+    let stats = try MergedHostsComposer().compose(
+        localContent: "", localFragments: [NamedContent(name: "Dev", content: "::1 *.app.test")], sources: [], to: out)
+    #expect(try String(contentsOf: out, encoding: .utf8)
+        == "# Dev\n# ::1 *.app.test  (wildcard, served by Hosts Switchr)\n")
+    #expect(stats.perSource == [SourceStat(name: "Dev", domains: 0, wildcards: 1)])
+    #expect(stats.totalDomains == 0)
+}
+
+@Test func compose_refusedOrMixedWildcardIsIgnored() throws {
+    let out = tempDir().appendingPathComponent("merged.hosts")
+    let stats = try MergedHostsComposer().compose(
+        localContent: "127.0.0.1 *.local\n127.0.0.1 *.test www.test", localFragments: [], sources: [], to: out)
+    #expect(try String(contentsOf: out, encoding: .utf8)
+        == "# 127.0.0.1 *.local  (wildcard ignored)\n# 127.0.0.1 *.test www.test  (wildcard ignored)\n")
+    #expect(stats.wildcards == .empty)
+}
+
+@Test func compose_sourceWildcardsAreLeftAsIsAndNeverCollected() throws {
+    let dir = tempDir()
+    let cache = dir.appendingPathComponent("s.hosts")
+    try "127.0.0.1 *.test\n".write(to: cache, atomically: true, encoding: .utf8)
+    let out = dir.appendingPathComponent("merged.hosts")
+    let stats = try MergedHostsComposer().compose(
+        localContent: "", localFragments: [], sources: [SourceLayer(name: "S", cacheURL: cache, expectedHash: nil)], to: out)
+    #expect(try String(contentsOf: out, encoding: .utf8) == "# S\n127.0.0.1 *.test\n")
+    #expect(stats.wildcards == .empty)
+}
+
+@Test func compose_explicitNamesInSourcesShadowWildcards() throws {
+    let dir = tempDir()
+    let cache = dir.appendingPathComponent("s.hosts")
+    try "0.0.0.0 ads.test\n0.0.0.0 ads.example.com\n".write(to: cache, atomically: true, encoding: .utf8)
+    let stats = try MergedHostsComposer().compose(
+        localContent: "127.0.0.1 *.test", localFragments: [],
+        sources: [SourceLayer(name: "S", cacheURL: cache, expectedHash: nil)], to: dir.appendingPathComponent("m.hosts"))
+    #expect(stats.wildcards.shadowedNames == ["ads.test"])
+}
