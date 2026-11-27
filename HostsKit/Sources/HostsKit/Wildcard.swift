@@ -4,12 +4,14 @@ public enum WildcardDNS {
     public static let defaultPort: UInt16 = 53535
     public static let ttl: UInt32 = 5
     public static let allowedParents: Set<String> = ["test", "internal"]
+    public static let parentsNeedingSubdomain: Set<String> = ["internal"]
 }
 
 public enum WildcardHostname: Equatable, Sendable {
     case plain
     case wildcard(suffix: String)
     case notAllowed
+    case tooBroad
     case invalid
 
     public static func classify(_ hostname: String) -> WildcardHostname {
@@ -23,6 +25,7 @@ public enum WildcardHostname: Equatable, Sendable {
         guard let parent = labels.last, WildcardDNS.allowedParents.contains(String(parent)) else {
             return .notAllowed
         }
+        guard !WildcardSuffixPolicy.isWholeTLDNeedingSubdomain(labels) else { return .tooBroad }
         return .wildcard(suffix: suffix)
     }
 }
@@ -33,10 +36,14 @@ public enum WildcardSuffixPolicy {
             && label.utf8.allSatisfy { ($0 >= 97 && $0 <= 122) || ($0 >= 48 && $0 <= 57) || $0 == 45 }
     }
 
+    static func isWholeTLDNeedingSubdomain(_ labels: [Substring]) -> Bool {
+        labels.count == 1 && WildcardDNS.parentsNeedingSubdomain.contains(String(labels[0]))
+    }
+
     public static func isValid(_ suffix: String) -> Bool {
         let labels = suffix.split(separator: ".", omittingEmptySubsequences: false)
         guard labels.allSatisfy(isValidLabel), let parent = labels.last else { return false }
-        return WildcardDNS.allowedParents.contains(String(parent))
+        return WildcardDNS.allowedParents.contains(String(parent)) && !isWholeTLDNeedingSubdomain(labels)
     }
 }
 

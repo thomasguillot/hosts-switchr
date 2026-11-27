@@ -15,6 +15,13 @@ import Testing
         }
     }
 
+    @Test func classify_refusesTheWholeInternalTLD() {
+        #expect(WildcardHostname.classify("*.internal") == .tooBroad)
+        #expect(WildcardHostname.classify("*.Internal") == .tooBroad)
+        #expect(WildcardHostname.classify("*.app.internal") == .wildcard(suffix: "app.internal"))
+        #expect(WildcardHostname.classify("*.test") == .wildcard(suffix: "test"))
+    }
+
     @Test func classify_rejectsBadShapesAndLabels() {
         let long = String(repeating: "a", count: 64)
         for host in ["*test", "foo.*.test", "*.*.test", "*.", "*.bad_label.test", "*.\(long).test", "*..test"] {
@@ -28,7 +35,7 @@ import Testing
     }
 
     @Test func rules_ignoreMixedRefusedMalformedAndCommented() {
-        let file = HostsFile(parsing: "127.0.0.1 *.test www.test\n127.0.0.1 *.local\n999.1.1.1 *.internal\n# 127.0.0.1 *.test")
+        let file = HostsFile(parsing: "127.0.0.1 *.test www.test\n127.0.0.1 *.local\n999.1.1.1 *.app.internal\n127.0.0.1 *.internal\n# 127.0.0.1 *.test")
         #expect(WildcardCollector.rules(in: [file]).isEmpty)
     }
 
@@ -54,6 +61,9 @@ import Testing
         #expect(!WildcardSuffixPolicy.isValid("../test"))
         #expect(!WildcardSuffixPolicy.isValid("evil'; rm -rf /"))
         #expect(!WildcardSuffixPolicy.isValid("example.com"))
+        #expect(!WildcardSuffixPolicy.isValid("internal"))
+        #expect(WildcardSuffixPolicy.isValid("svc.internal"))
+        #expect(WildcardSuffixPolicy.isValid("test"))
     }
 
     @Test func collectableSuffix_requiresSingleValidWildcardAndIP() {

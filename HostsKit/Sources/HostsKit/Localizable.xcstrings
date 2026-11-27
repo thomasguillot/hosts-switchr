@@ -144,6 +144,36 @@
           }
         }
       }
+    },
+    "validator.wildcardTooBroad" : {
+      "comment" : "Validator warning for a wildcard that covers the whole .internal top-level domain. %@ is the hostname.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ would catch every .internal name. Use a name below it, such as *.app.internal"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ would catch every .internal name. Use a name below it, such as *.app.internal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ capturaría todos los nombres .internal. Usa un nombre por debajo, como *.app.internal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ capterait tous les noms en .internal. Utilisez un nom en dessous, comme *.app.internal"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

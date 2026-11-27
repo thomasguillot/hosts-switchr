@@ -57,10 +57,10 @@ import Testing
 
     @Test func eachWriteGetsItsOwnTemp() {
         let request = ApplyRequest(stagedPath: "/tmp/s.hosts", resolverWrites: [
-            ResolverWrite(domain: "test", port: 53535), ResolverWrite(domain: "internal", port: 53535)])
+            ResolverWrite(domain: "test", port: 53535), ResolverWrite(domain: "corp.internal", port: 53535)])
         let c = command(request)
         #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/test'"))
-        #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U2' '/etc/resolver/internal'"))
+        #expect(c.contains("mv -h '/etc/resolver/.hsk-tmp.U2' '/etc/resolver/corp.internal'"))
         #expect(c.contains("} || { rm -f '/etc/resolver/.hsk-tmp.U1' '/etc/resolver/.hsk-tmp.U2'; rc=3; }; "))
     }
 
@@ -126,7 +126,7 @@ import Testing
     }
 
     @Test func validateRejectsUnvalidatedDomains() throws {
-        for bad in ["../evil", "evil'; rm -rf /", "*.test", "example.com", "Test", ""] {
+        for bad in ["../evil", "evil'; rm -rf /", "*.test", "example.com", "Test", "", "internal"] {
             #expect(throws: RunnerError.invalidResolverDomain(bad)) {
                 try AuthorizationPrivilegedRunner.validate(ApplyRequest(stagedPath: "/tmp/s",
                     resolverWrites: [ResolverWrite(domain: bad, port: 53535)]))
@@ -217,12 +217,12 @@ import Testing
     func writesAbsentAndOwnedFilesAndRemovesOwnedOnes(shell: String) throws {
         let box = try Sandbox()
         defer { box.clean() }
-        try box.put("internal", ResolverFile.marker + "\nnameserver 127.0.0.1\nport 1\n")
+        try box.put("corp.internal", ResolverFile.marker + "\nnameserver 127.0.0.1\nport 1\n")
         try box.put("old.test", box.ours)
 
-        #expect(try box.run(shell, writes: ["test", "internal"], removals: ["old.test", "gone.test"]) == 0)
+        #expect(try box.run(shell, writes: ["test", "corp.internal"], removals: ["old.test", "gone.test"]) == 0)
         #expect(box.read("test") == box.ours)
-        #expect(box.read("internal") == box.ours)
+        #expect(box.read("corp.internal") == box.ours)
         #expect(!FileManager.default.fileExists(atPath: box.file("old.test").path))
         #expect(box.temps().isEmpty)
     }
@@ -256,15 +256,15 @@ import Testing
         try box.ours.write(to: elsewhere, atomically: true, encoding: .utf8)
         try FileManager.default.createDirectory(at: box.dir, withIntermediateDirectories: true)
         try FileManager.default.createSymbolicLink(at: box.file("test"), withDestinationURL: elsewhere)
-        try FileManager.default.createDirectory(at: box.file("internal"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: box.file("corp.internal"), withIntermediateDirectories: true)
 
         #expect(try box.run(shell, writes: ["test"]) == 3)
         #expect(try box.run(shell, removals: ["test"]) == 3)
-        #expect(try box.run(shell, writes: ["internal"]) == 3)
-        #expect(try box.run(shell, removals: ["internal"]) == 3)
+        #expect(try box.run(shell, writes: ["corp.internal"]) == 3)
+        #expect(try box.run(shell, removals: ["corp.internal"]) == 3)
         #expect(try FileManager.default.destinationOfSymbolicLink(atPath: box.file("test").path) == elsewhere.path)
         #expect(try String(contentsOf: elsewhere, encoding: .utf8) == box.ours)
-        #expect(try FileManager.default.contentsOfDirectory(atPath: box.file("internal").path).isEmpty)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: box.file("corp.internal").path).isEmpty)
         #expect(box.temps().isEmpty)
     }
 

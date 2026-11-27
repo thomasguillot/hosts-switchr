@@ -54,6 +54,10 @@ public enum HostsValidator {
         case .notAllowed:
             return String(localized: "validator.wildcardNotAllowed",
                           defaultValue: "Wildcards only work under .test and .internal: \(host)", bundle: .hostsKit)
+        case .tooBroad:
+            return String(localized: "validator.wildcardTooBroad",
+                          defaultValue: "\(host) would catch every .internal name. Use a name below it, such as *.app.internal",
+                          bundle: .hostsKit)
         case .invalid:
             return String(localized: "validator.wildcardInvalid",
                           defaultValue: "Invalid wildcard: \(host). Use the form *.name.test", bundle: .hostsKit)

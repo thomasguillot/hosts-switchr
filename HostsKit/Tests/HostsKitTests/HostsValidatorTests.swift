@@ -48,6 +48,12 @@ import Testing
     #expect(w.contains { $0.line == 1 && $0.message.contains("*.local") && $0.message.contains(".internal") })
 }
 
+@Test func validate_wholeInternalTLDWildcard_isFlagged() {
+    let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.internal"))
+    #expect(w.contains { $0.line == 1 && $0.message.contains("every .internal name") })
+    #expect(HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.app.internal")).isEmpty)
+}
+
 @Test func validate_invalidWildcard_isFlagged() {
     let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.bad_label.test"))
     #expect(w.contains { $0.line == 1 && $0.message.contains("Invalid wildcard") })
