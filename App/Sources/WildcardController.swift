@@ -53,8 +53,8 @@ final class WildcardController {
                                 deployment: deployment, stagedURL: stagedURL)
     }
 
-    func didApply(_ prepared: PreparedResolver, resolverFailed: Bool) -> String? {
-        let deployment = resolverFailed ? retained(over: prepared.deployment) : prepared.deployment
+    func didApply(_ prepared: PreparedResolver, resolverFailed: Bool) -> (deployment: WildcardDeployment, message: String?) {
+        let deployment = resolverFailed ? merged(over: prepared.deployment) : prepared.deployment
         served = deployment
         foreignDomains = prepared.foreign
         resolverDrift = resolverFailed
@@ -62,11 +62,11 @@ final class WildcardController {
                                          existing: ResolverDirectory.read(resolverDirectory))
         serve(deployment.served, port: deployment.port)
         if resolverFailed {
-            return String(localized: "The hosts file was updated, but wildcard domains couldn't be set up. /etc/resolver must be a folder owned by root.")
+            return (deployment, String(localized: "The hosts file was updated, but wildcard domains couldn't be set up. Check that /etc/resolver is a folder owned by root and not writable by others, then apply again."))
         }
-        guard foreignDomains != alertedForeign else { return nil }
+        guard foreignDomains != alertedForeign else { return (deployment, nil) }
         alertedForeign = foreignDomains
-        return foreignDomains.isEmpty ? nil : foreignDomains.map(Self.foreignLine).joined(separator: "\n")
+        return (deployment, foreignDomains.isEmpty ? nil : foreignDomains.map(Self.foreignLine).joined(separator: "\n"))
     }
 
     @discardableResult
@@ -82,9 +82,12 @@ final class WildcardController {
         return resolverDrift
     }
 
-    private func retained(over intended: WildcardDeployment) -> WildcardDeployment {
+    private func merged(over intended: WildcardDeployment) -> WildcardDeployment {
         guard let served else { return intended }
-        return WildcardDeployment(served: served.served, resolverDomains: intended.resolverDomains, port: served.port)
+        let suffixes = Set(intended.served.rules.map(\.suffix))
+        let rules = intended.served.rules + served.served.rules.filter { !suffixes.contains($0.suffix) }
+        let set = WildcardSet(rules: rules, shadowedNames: intended.served.shadowedNames.union(served.served.shadowedNames))
+        return WildcardDeployment(served: set, resolverDomains: intended.resolverDomains, port: served.port)
     }
 
     private func serve(_ set: WildcardSet, port: UInt16) {

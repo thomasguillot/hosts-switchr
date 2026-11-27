@@ -468,8 +468,9 @@ final class AppModel {
         let prepared = try wildcards.prepare(set)
         defer { prepared.discardStaging() }
         let result = try applier.apply(stagedURL: temp, resolverWrites: prepared.writes, resolverRemovals: prepared.removals)
-        if let message = wildcards.didApply(prepared, resolverFailed: result.resolverFailed) { lastError = message }
-        return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen, wildcards: wildcards.served ?? prepared.deployment, resolverFailed: result.resolverFailed)
+        let applied = wildcards.didApply(prepared, resolverFailed: result.resolverFailed)
+        if let message = applied.message { lastError = message }
+        return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen, wildcards: applied.deployment, resolverFailed: result.resolverFailed)
     }
 
     private(set) var appliedState: AppliedProfileState?
