@@ -19,7 +19,7 @@ extension AppModel {
         for fid in p.fragmentIDs {
             guard let f = fragments.first(where: { $0.id == fid }) else { continue }
             let count = HostsScan.mappingLineCount(f.content)
-            perSource.append(SourceStat(name: f.name, domains: count))
+            perSource.append(SourceStat(name: f.name, domains: count, wildcards: HostsScan.wildcardLineCount(f.content)))
             total += count
         }
         for sid in p.sourceIDs {

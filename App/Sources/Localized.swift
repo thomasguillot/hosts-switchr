@@ -1,10 +1,21 @@
 import Foundation
+import HostsKit
 
 // Counts that need real plural rules. Kept out of the call sites so the catalog holds one
 // pluralized key per phrase instead of a "(s)" fudge that only reads correctly in English.
 enum Localized {
     static func domains(_ count: Int) -> String {
         String(localized: "\(count) domains", comment: "Size of a blocklist source")
+    }
+
+    static func wildcards(_ count: Int) -> String {
+        String(localized: "\(count) wildcards", comment: "Number of wildcard lines in a fragment")
+    }
+
+    static func layerSize(_ stat: SourceStat) -> String {
+        var parts = [domains(stat.domains)]
+        if stat.wildcards > 0 { parts.append(wildcards(stat.wildcards)) }
+        return parts.joined(separator: " · ")
     }
 
     static func nullRoutedTotal(_ count: Int) -> String {

@@ -91,6 +91,21 @@ final class WildcardController {
         service.serve(set, port: port) { [weak self] state in self?.serviceState = state }
     }
 
+    var menuLines: [String] {
+        var lines: [String] = []
+        if let served, !served.served.isEmpty {
+            let suffixes = served.served.rules.map { "*." + $0.suffix }.joined(separator: ", ")
+            let port = String(served.port)
+            switch serviceState {
+            case .ready: lines.append(String(localized: "Wildcards active: \(suffixes)"))
+            case .portInUse: lines.append(String(localized: "Wildcards stopped: port \(port) is in use"))
+            case .failed(let message): lines.append(String(localized: "Wildcards stopped: \(message)"))
+            case .stopped: lines.append(String(localized: "Wildcards stopped"))
+            }
+        }
+        return lines + foreignDomains.map(Self.foreignLine)
+    }
+
     private static func foreignLine(_ domain: String) -> String {
         String(localized: "/etc/resolver/\(domain) belongs to another tool; *.\(domain) wildcards are off.")
     }
