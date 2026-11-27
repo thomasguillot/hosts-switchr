@@ -3,11 +3,9 @@ import Foundation
 public struct HostsApplyResult: Equatable, Sendable {
     public let backupURL: URL?
     public let resolverFailed: Bool
-    public let resolverMessage: String?
-    public init(backupURL: URL?, resolverFailed: Bool, resolverMessage: String? = nil) {
+    public init(backupURL: URL?, resolverFailed: Bool) {
         self.backupURL = backupURL
         self.resolverFailed = resolverFailed
-        self.resolverMessage = resolverMessage
     }
 }
 
@@ -43,11 +41,10 @@ public final class HostsApplier: @unchecked Sendable {
         } catch {
             // Apply already committed, so copy-out failure must not throw. Remove any partial/mis-permissioned copy; return nil and skip pruning so existing real backups survive.
             try? fileManager.removeItem(at: backupURL)
-            return HostsApplyResult(backupURL: nil, resolverFailed: result.resolverFailed, resolverMessage: result.message)
+            return HostsApplyResult(backupURL: nil, resolverFailed: result.resolverFailed)
         }
         pruneBackups(keeping: backupURL)
-        return HostsApplyResult(
-            backupURL: backupURL, resolverFailed: result.resolverFailed, resolverMessage: result.message)
+        return HostsApplyResult(backupURL: backupURL, resolverFailed: result.resolverFailed)
     }
 
     // `current` is excluded from deletion regardless of mtime so a future-dated older backup can't evict it. Skips symlinks (incl. the dir itself).

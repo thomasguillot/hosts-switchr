@@ -13,7 +13,6 @@ final class MockRunner: PrivilegedRunner, @unchecked Sendable {
     /// throws — simulates a committed privileged apply whose post-commit copy-out fails.
     var returnMissingSnapshot = false
     var resolverFails = false
-    var resolverMessage: String?
     /// Paths of snapshot temp files this mock created (so tests can inspect/clean them).
     private(set) var snapshotPaths: [String] = []
 
@@ -24,7 +23,7 @@ final class MockRunner: PrivilegedRunner, @unchecked Sendable {
             // A path the runner "committed" to but whose file was never created — copy-out will throw.
             let missing = FileManager.default.temporaryDirectory
                 .appendingPathComponent("missing-snap-\(UUID().uuidString)").path
-            return PrivilegedApplyResult(snapshotPath: missing, resolverFailed: resolverFails, message: resolverMessage)
+            return PrivilegedApplyResult(snapshotPath: missing, resolverFailed: resolverFails)
         }
         // The real runner snapshots /etc/hosts into a root-owned temp inside /etc and returns its
         // path; the mock emulates that with a real file in a test temp dir so copy-out can read it.
@@ -32,7 +31,7 @@ final class MockRunner: PrivilegedRunner, @unchecked Sendable {
             .appendingPathComponent("snap-\(UUID().uuidString)").path
         try Data(snapshotContent.utf8).write(to: URL(fileURLWithPath: path))
         snapshotPaths.append(path)
-        return PrivilegedApplyResult(snapshotPath: path, resolverFailed: resolverFails, message: resolverMessage)
+        return PrivilegedApplyResult(snapshotPath: path, resolverFailed: resolverFails)
     }
 }
 
@@ -167,7 +166,6 @@ private func tempDir() -> URL {
 @Test func applier_forwardsResolverChangesAndKeepsBackupWhenResolverStepFails() throws {
     let runner = MockRunner()
     runner.resolverFails = true
-    runner.resolverMessage = "mkdir: /etc/resolver: Not a directory"
     let dir = tempDir()
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let staged = dir.appendingPathComponent("staged.hosts")
@@ -179,7 +177,6 @@ private func tempDir() -> URL {
 
     #expect(runner.received == ApplyRequest(stagedPath: staged.path, resolverWrites: writes, resolverRemovals: ["old.test"]))
     #expect(result.resolverFailed)
-    #expect(result.resolverMessage == "mkdir: /etc/resolver: Not a directory")
     let backup = try #require(result.backupURL)
     #expect(FileManager.default.fileExists(atPath: backup.path))
 }

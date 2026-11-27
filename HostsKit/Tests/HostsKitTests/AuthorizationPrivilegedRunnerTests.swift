@@ -126,9 +126,9 @@ import Testing
 
     @Test func resultDistinguishesHostsFailureFromResolverFailure() throws {
         #expect(try AuthorizationPrivilegedRunner.result(errorNumber: nil, message: nil, snapshotPath: "/b")
-            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: false, message: nil))
+            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: false))
         #expect(try AuthorizationPrivilegedRunner.result(errorNumber: 3, message: "x", snapshotPath: "/b")
-            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: true, message: "x"))
+            == PrivilegedApplyResult(snapshotPath: "/b", resolverFailed: true))
         #expect(throws: RunnerError.scriptFailed("boom")) {
             try AuthorizationPrivilegedRunner.result(errorNumber: 1, message: "boom", snapshotPath: "/b")
         }

@@ -93,12 +93,12 @@ public final class AuthorizationPrivilegedRunner: PrivilegedRunner, @unchecked S
 
     static func result(errorNumber: Int?, message: String?, snapshotPath: String) throws -> PrivilegedApplyResult {
         guard let errorNumber else {
-            return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: false, message: nil)
+            return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: false)
         }
         guard errorNumber == Int(resolverFailedExitCode) else {
             throw RunnerError.scriptFailed(message ?? "Unknown error")
         }
-        return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: true, message: message)
+        return PrivilegedApplyResult(snapshotPath: snapshotPath, resolverFailed: true)
     }
 
     static func singleQuote(_ path: String) -> String {

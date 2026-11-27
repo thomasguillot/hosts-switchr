@@ -21,11 +21,9 @@ public struct ApplyRequest: Equatable, Sendable {
 public struct PrivilegedApplyResult: Equatable, Sendable {
     public let snapshotPath: String
     public let resolverFailed: Bool
-    public let message: String?
-    public init(snapshotPath: String, resolverFailed: Bool, message: String? = nil) {
+    public init(snapshotPath: String, resolverFailed: Bool) {
         self.snapshotPath = snapshotPath
         self.resolverFailed = resolverFailed
-        self.message = message
     }
 }
 
