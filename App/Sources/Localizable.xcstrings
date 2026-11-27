@@ -469,6 +469,35 @@
       "extractionState": "manual",
       "shouldTranslate": false
     },
+    "/etc/resolver/%@ belongs to another tool; *.%@ wildcards are off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/etc/resolver/%@ belongs to another tool; *.%@ wildcards are off."
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/etc/resolver/%@ belongs to another tool; *.%@ wildcards are off."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "/etc/resolver/%@ pertenece a otra herramienta; los comodines *.%@ están desactivados."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "/etc/resolver/%@ appartient à un autre outil ; les jokers *.%@ sont désactivés."
+          }
+        }
+      }
+    },
     "A new version of Hosts Switchr is available": {
       "extractionState": "manual",
       "localizations": {
@@ -4326,6 +4355,35 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Cette source est introuvable."
+          }
+        }
+      }
+    },
+    "The hosts file was updated, but wildcard domains couldn't be set up. Apply again to retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The hosts file was updated, but wildcard domains couldn't be set up. Apply again to retry."
+          }
+        },
+        "en-GB": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The hosts file was updated, but wildcard domains couldn't be set up. Apply again to retry."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Se actualizó el archivo hosts, pero no se pudieron configurar los dominios comodín. Vuelve a aplicar para intentarlo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Le fichier hosts a été mis à jour, mais les domaines joker n’ont pas pu être configurés. Appliquez à nouveau pour réessayer."
           }
         }
       }

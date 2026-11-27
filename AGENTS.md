@@ -119,7 +119,7 @@ After `xcodegen` regenerates the project, SourceKit's index goes stale and repor
 - **YAGNI.** No abstraction beyond what the current task requires.
 - **TDD.** HostsKit changes: write failing tests first.
 - **Fail-closed persistence.** Before overwriting any `.json` store file, write the corrupt original to a unique `.corrupt` path. Never swallow a load error silently.
-- **`file_length` rule:** `warning: 600, error: 800`. AppModel is ~598 lines and sits right against the 600 warning — do not add to it without justification; net growth needs offsetting or the clean state-owning seam below (e.g. move applied-state/staleness logic into `AppliedProfileState.swift`).
+- **`file_length` rule:** `warning: 600, error: 800`. AppModel is ~596 lines and sits right against the 600 warning — do not add to it without justification; net growth needs offsetting or the clean state-owning seam below (e.g. move applied-state/staleness logic into `AppliedProfileState.swift`).
 
 ## SwiftUI / AppKit layout gotchas (main window)
 
