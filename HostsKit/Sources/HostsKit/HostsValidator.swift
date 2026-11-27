@@ -10,7 +10,7 @@ public struct HostsWarning: Equatable, Hashable, Sendable {
 }
 
 public enum HostsValidator {
-    public static func validate(_ file: HostsFile) -> [HostsWarning] {
+    public static func validate(_ file: HostsFile, inheritedWildcards: [WildcardRule] = []) -> [HostsWarning] {
         var warnings: [HostsWarning] = []
         var seenHostnames: [String: (ip: String, line: Int)] = [:]
 
@@ -20,6 +20,9 @@ public enum HostsValidator {
 
             if !isValidIP(ip) {
                 warnings.append(HostsWarning(line: lineNo, message: "Malformed IP address: \(ip)"))
+            }
+            if let warning = wildcardWarning(hostnames) {
+                warnings.append(HostsWarning(line: lineNo, message: warning))
             }
             for host in hostnames {
                 let key = host.lowercased()
@@ -34,6 +37,50 @@ public enum HostsValidator {
                 } else {
                     seenHostnames[key] = (ip, lineNo)
                 }
+            }
+        }
+        warnings += overrideWarnings(in: file, inherited: inheritedWildcards)
+        return warnings
+    }
+
+    private static func wildcardWarning(_ hostnames: [String]) -> String? {
+        guard WildcardCollector.isWildcardAttempt(hostnames) else { return nil }
+        if hostnames.count > 1 {
+            return String(localized: "validator.wildcardMixed",
+                          defaultValue: "A wildcard must be the only name on its line", bundle: .hostsKit)
+        }
+        let host = hostnames[0]
+        switch WildcardHostname.classify(host) {
+        case .notAllowed:
+            return String(localized: "validator.wildcardNotAllowed",
+                          defaultValue: "Wildcards only work under .test and .internal: \(host)", bundle: .hostsKit)
+        case .invalid:
+            return String(localized: "validator.wildcardInvalid",
+                          defaultValue: "Invalid wildcard: \(host). Use the form *.name.test", bundle: .hostsKit)
+        case .plain, .wildcard:
+            return nil
+        }
+    }
+
+    private static func overrideWarnings(in file: HostsFile, inherited: [WildcardRule]) -> [HostsWarning] {
+        let rules = WildcardCollector.rules(in: [file]) + inherited
+        guard !rules.isEmpty else { return [] }
+        var warnings: [HostsWarning] = []
+        for (index, entry) in file.lines.enumerated() {
+            guard case let .mapping(ip, hostnames) = entry.kind, isValidIP(ip) else { continue }
+            for host in hostnames where !host.contains("*") {
+                let name = host.lowercased()
+                let covering = rules
+                    .filter { name == $0.suffix || name.hasSuffix("." + $0.suffix) }
+                    .max { $0.suffix.count < $1.suffix.count }
+                guard let rule = covering else { continue }
+                let ruleIP = ip.contains(":") ? rule.ipv6 : rule.ipv4
+                guard let ruleIP, ruleIP != ip else { continue }
+                let wildcard = "*." + rule.suffix
+                warnings.append(HostsWarning(
+                    line: index + 1,
+                    message: String(localized: "validator.wildcardOverride",
+                                    defaultValue: "\(host) overrides \(wildcard)", bundle: .hostsKit)))
             }
         }
         return warnings

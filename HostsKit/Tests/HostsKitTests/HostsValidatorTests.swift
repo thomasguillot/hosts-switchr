@@ -42,3 +42,40 @@ import Testing
     let file = HostsFile(parsing: "127.0.0.1 LocalHost\n::1 localhost")
     #expect(HostsValidator.validate(file).isEmpty)
 }
+
+@Test func validate_wildcardOutsideAllowedParents_isFlagged() {
+    let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.local"))
+    #expect(w.contains { $0.line == 1 && $0.message.contains("*.local") && $0.message.contains(".internal") })
+}
+
+@Test func validate_invalidWildcard_isFlagged() {
+    let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.bad_label.test"))
+    #expect(w.contains { $0.line == 1 && $0.message.contains("Invalid wildcard") })
+}
+
+@Test func validate_mixedWildcardLine_isFlagged() {
+    let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test www.test"))
+    #expect(w.contains { $0.line == 1 && $0.message.contains("only name on its line") })
+}
+
+@Test func validate_explicitLineUnderWildcardWithOtherAddress_warns() {
+    let w = HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.5 api.test"))
+    #expect(w == [HostsWarning(line: 2, message: "api.test overrides *.test")])
+}
+
+@Test func validate_explicitLineMatchingWildcardOrOtherFamily_isClean() {
+    #expect(HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test\n127.0.0.1 api.test")).isEmpty)
+    #expect(HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test\n::1 api.test")).isEmpty)
+    #expect(HostsValidator.validate(HostsFile(parsing: "127.0.0.1 *.test\n::1 *.test")).isEmpty)
+}
+
+@Test func validate_overrideUsesMostSpecificWildcard() {
+    let file = HostsFile(parsing: "127.0.0.1 *.test\n10.0.0.5 *.app.test\n10.0.0.5 x.app.test")
+    #expect(HostsValidator.validate(file).isEmpty)
+}
+
+@Test func validate_inheritedWildcardOverride_warns() {
+    let inherited = [WildcardRule(suffix: "test", ipv4: "127.0.0.1", ipv6: nil)]
+    let w = HostsValidator.validate(HostsFile(parsing: "10.0.0.5 api.test"), inheritedWildcards: inherited)
+    #expect(w == [HostsWarning(line: 1, message: "api.test overrides *.test")])
+}

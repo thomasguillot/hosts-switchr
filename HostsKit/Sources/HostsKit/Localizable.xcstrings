@@ -24,6 +24,126 @@
           }
         }
       }
+    },
+    "validator.wildcardInvalid" : {
+      "comment" : "Validator warning for a malformed wildcard hostname. %@ is the hostname.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid wildcard: %@. Use the form *.name.test"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid wildcard: %@. Use the form *.name.test"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Comodín no válido: %@. Usa la forma *.nombre.test"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Joker non valide : %@. Utilisez la forme *.nom.test"
+          }
+        }
+      }
+    },
+    "validator.wildcardMixed" : {
+      "comment" : "Validator warning when a wildcard shares its line with other hostnames.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A wildcard must be the only name on its line"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A wildcard must be the only name on its line"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Un comodín debe ser el único nombre de su línea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Un joker doit être le seul nom de sa ligne"
+          }
+        }
+      }
+    },
+    "validator.wildcardNotAllowed" : {
+      "comment" : "Validator warning for a wildcard hostname outside .test and .internal. %@ is the hostname.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wildcards only work under .test and .internal: %@"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wildcards only work under .test and .internal: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Los comodines solo funcionan bajo .test y .internal: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Les jokers ne fonctionnent que sous .test et .internal : %@"
+          }
+        }
+      }
+    },
+    "validator.wildcardOverride" : {
+      "comment" : "Validator warning when an explicit hostname maps to a different address than the wildcard covering it. First %@ is the hostname, second is the wildcard.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ overrides %@"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ overrides %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ sustituye a %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ remplace %@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
