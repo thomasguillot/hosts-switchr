@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import HostsKit
 import Network
@@ -12,13 +13,16 @@ enum WildcardServiceState: Equatable, Sendable {
 final class WildcardDNSService: @unchecked Sendable {
     typealias StateHandler = @MainActor @Sendable (WildcardServiceState) -> Void
 
-    private struct Tracked {
+    static let maxStreams = 32
+
+    private struct Stream {
         let connection: NWConnection
         var activity: UInt64
     }
 
     private struct Report {
         var listeners: [NWListener] = []
+        var sockets: [DispatchSourceRead] = []
         var connections: [NWConnection] = []
         var state: WildcardServiceState?
         var generation: UInt64 = 0
@@ -26,6 +30,7 @@ final class WildcardDNSService: @unchecked Sendable {
 
         func cancel() {
             listeners.forEach { $0.cancel() }
+            sockets.forEach { $0.cancel() }
             connections.forEach { $0.cancel() }
         }
 
@@ -41,22 +46,29 @@ final class WildcardDNSService: @unchecked Sendable {
     }
 
     private static let idleTimeout: DispatchTimeInterval = .seconds(10)
+    private static let streamLifetime: DispatchTimeInterval = .seconds(10)
+    private static let retryDelays = [1, 2, 5, 30]
+    private static let datagramsPerWakeup = 64
 
     private let queue: DispatchQueue
     private let lock = NSLock()
     private var matcher = WildcardMatcher(.empty)
-    private var udpListener: NWListener?
-    private var tcpListener: NWListener?
-    private var readyListeners: Set<ObjectIdentifier> = []
-    private var closingListeners: [ObjectIdentifier: NWListener] = [:]
-    private var port: UInt16?
-    private var pendingPort: UInt16?
+    private var desiredPort: UInt16?
+    private var boundPort: UInt16?
+    private var datagramSource: DispatchSourceRead?
+    private var streamListener: NWListener?
+    private var streamReady = false
+    private var closing = 0
+    private var wantsStart = false
+    private var attempt: UInt64 = 0
+    private var failures = 0
+    private var retryArmed = false
     private var state: WildcardServiceState = .stopped
     private var generation: UInt64 = 0
     private var deliveredGeneration: UInt64 = 0
     private var onState: StateHandler?
-    private var connections: [UInt64: Tracked] = [:]
-    private var nextConnectionID: UInt64 = 0
+    private var streams: [UInt64: Stream] = [:]
+    private var nextStreamID: UInt64 = 0
 
     init(queue: DispatchQueue = DispatchQueue(label: "com.hostsswitchr.wildcard-dns")) {
         self.queue = queue
@@ -76,11 +88,13 @@ final class WildcardDNSService: @unchecked Sendable {
         let reports: [Report] = lock.withLock {
             self.matcher = matcher
             self.onState = onState
-            if udpListener != nil, self.port == port { return [settleLocked(state)] }
+            if datagramSource != nil, boundPort == port { return [settleLocked(state)] }
             let teardown = takeAllLocked()
             state = .stopped
-            pendingPort = port
-            return [teardown] + [startPendingLocked()].compactMap { $0 }
+            desiredPort = port
+            failures = 0
+            wantsStart = true
+            return [teardown] + [startLocked()].compactMap { $0 }
         }
         reports.forEach { $0.run(for: self) }
     }
@@ -88,7 +102,8 @@ final class WildcardDNSService: @unchecked Sendable {
     func stop() {
         let report = lock.withLock {
             let teardown = takeAllLocked()
-            pendingPort = nil
+            desiredPort = nil
+            wantsStart = false
             matcher = WildcardMatcher(.empty)
             return settleLocked(.stopped, teardown)
         }
@@ -114,38 +129,135 @@ final class WildcardDNSService: @unchecked Sendable {
         }
     }
 
-    private func startPendingLocked() -> Report? {
-        guard closingListeners.isEmpty, let port = pendingPort else { return nil }
-        pendingPort = nil
-        let udp: NWListener
-        let tcp: NWListener
-        do {
-            udp = try Self.listener(.udp, port: port)
-            let tcpParameters = NWParameters.tcp
-            tcpParameters.allowLocalEndpointReuse = true
-            tcp = try Self.listener(tcpParameters, port: port)
-        } catch {
-            return settleLocked(.failed(error.localizedDescription))
+    private func failLocked(_ newState: WildcardServiceState, _ teardown: Report = Report()) -> Report {
+        armRetryLocked()
+        return settleLocked(newState, teardown)
+    }
+
+    private func armRetryLocked() {
+        guard desiredPort != nil, !retryArmed else { return }
+        retryArmed = true
+        let delay = Self.retryDelays[min(failures, Self.retryDelays.count - 1)]
+        failures += 1
+        let token = attempt
+        queue.asyncAfter(deadline: .now() + .seconds(delay)) { [weak self] in
+            self?.retry(token)
         }
-        udpListener = udp
-        tcpListener = tcp
-        self.port = port
-        configure(udp, datagram: true)
-        configure(tcp, datagram: false)
-        udp.start(queue: queue)
-        tcp.start(queue: queue)
+    }
+
+    private func retry(_ token: UInt64) {
+        let reports: [Report] = lock.withLock {
+            guard token == attempt else { return [] }
+            retryArmed = false
+            guard desiredPort != nil, !streamReady else { return [] }
+            let teardown = takeAllLocked()
+            wantsStart = true
+            return [teardown] + [startLocked()].compactMap { $0 }
+        }
+        reports.forEach { $0.run(for: self) }
+    }
+
+    private func startLocked() -> Report? {
+        guard wantsStart, closing == 0, let port = desiredPort else { return nil }
+        wantsStart = false
+        let fd: Int32
+        let listener: NWListener
+        do {
+            fd = try Self.bindDatagramSocket(port: port)
+        } catch {
+            return failLocked(Self.state(for: error))
+        }
+        do {
+            listener = try Self.makeStreamListener(port: port)
+        } catch {
+            close(fd)
+            return failLocked(Self.state(for: error))
+        }
+        boundPort = port
+        streamListener = listener
+        datagramSource = makeDatagramSource(fd)
+        configure(listener)
+        listener.start(queue: queue)
         return nil
     }
 
-    private static func listener(_ parameters: NWParameters, port: UInt16) throws -> NWListener {
-        guard port != 0, let endpointPort = NWEndpoint.Port(rawValue: port) else {
-            throw NWError.posix(.EINVAL)
+    private static func bindDatagramSocket(port: UInt16) throws -> Int32 {
+        guard port != 0 else { throw NWError.posix(.EINVAL) }
+        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+        guard fd >= 0 else { throw NWError.posix(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = port.bigEndian
+        address.sin_addr.s_addr = UInt32(0x7F00_0001).bigEndian
+        let bound = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
         }
+        guard bound == 0, fcntl(fd, F_SETFD, FD_CLOEXEC) == 0, fcntl(fd, F_SETFL, O_NONBLOCK) == 0 else {
+            let code = POSIXErrorCode(rawValue: errno) ?? .EIO
+            close(fd)
+            throw NWError.posix(code)
+        }
+        return fd
+    }
+
+    private static func makeStreamListener(port: UInt16) throws -> NWListener {
+        guard let endpointPort = NWEndpoint.Port(rawValue: port) else { throw NWError.posix(.EINVAL) }
+        let parameters = NWParameters.tcp
+        parameters.allowLocalEndpointReuse = true
+        parameters.requiredInterfaceType = .loopback
         parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: endpointPort)
         return try NWListener(using: parameters)
     }
 
-    private func configure(_ listener: NWListener, datagram: Bool) {
+    private static func state(for error: Error) -> WildcardServiceState {
+        if case .posix(.EADDRINUSE)? = error as? NWError { return .portInUse }
+        return .failed(error.localizedDescription)
+    }
+
+    private func makeDatagramSource(_ fd: Int32) -> DispatchSourceRead {
+        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
+        source.setEventHandler { [weak self] in
+            self?.drainDatagrams(fd)
+        }
+        source.setCancelHandler { [weak self] in
+            close(fd)
+            self?.closed()
+        }
+        source.resume()
+        return source
+    }
+
+    private func drainDatagrams(_ fd: Int32) {
+        let matcher = currentMatcher
+        var buffer = [UInt8](repeating: 0, count: 65_536)
+        for _ in 0..<Self.datagramsPerWakeup {
+            var peer = sockaddr_storage()
+            var peerLength = socklen_t(MemoryLayout<sockaddr_storage>.size)
+            let count = buffer.withUnsafeMutableBytes { bytes in
+                withUnsafeMutablePointer(to: &peer) {
+                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                        recvfrom(fd, bytes.baseAddress, bytes.count, 0, $0, &peerLength)
+                    }
+                }
+            }
+            guard count >= 0 else { return }
+            guard let reply = WildcardDNSResponder.response(to: Data(buffer[0..<count]), matcher: matcher) else {
+                continue
+            }
+            _ = reply.withUnsafeBytes { bytes in
+                withUnsafePointer(to: &peer) {
+                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                        sendto(fd, bytes.baseAddress, bytes.count, 0, $0, peerLength)
+                    }
+                }
+            }
+        }
+    }
+
+    private func configure(_ listener: NWListener) {
         let id = ObjectIdentifier(listener)
         listener.stateUpdateHandler = { [weak self] newState in
             self?.listener(id, changedTo: newState)
@@ -155,25 +267,26 @@ final class WildcardDNSService: @unchecked Sendable {
                 connection.cancel()
                 return
             }
-            accept(connection, from: id, datagram: datagram)
+            accept(connection, from: id)
         }
     }
 
     private func listener(_ id: ObjectIdentifier, changedTo newState: NWListener.State) {
+        if case .cancelled = newState {
+            closed()
+            return
+        }
         let report: Report? = lock.withLock {
-            if case .cancelled = newState {
-                closingListeners[id] = nil
-                return startPendingLocked()
-            }
-            let current = [udpListener, tcpListener].compactMap { $0 }.map(ObjectIdentifier.init)
-            guard current.contains(id) else { return nil }
+            guard streamListener.map(ObjectIdentifier.init) == id else { return nil }
             switch newState {
             case .ready:
-                readyListeners.insert(id)
-                guard readyListeners.count == 2 else { return nil }
+                streamReady = true
+                failures = 0
                 return settleLocked(.ready)
-            case .failed(let error), .waiting(let error):
-                return settleLocked(Self.state(for: error), takeAllLocked())
+            case .waiting(let error):
+                return failLocked(Self.state(for: error))
+            case .failed(let error):
+                return failLocked(Self.state(for: error), takeAllLocked())
             default:
                 return nil
             }
@@ -181,31 +294,43 @@ final class WildcardDNSService: @unchecked Sendable {
         report?.run(for: self)
     }
 
-    private static func state(for error: NWError) -> WildcardServiceState {
-        if case .posix(.EADDRINUSE) = error { return .portInUse }
-        return .failed(error.localizedDescription)
+    private func closed() {
+        let report = lock.withLock {
+            closing -= 1
+            return startLocked()
+        }
+        report?.run(for: self)
     }
 
-    // Closing listeners are kept until they report .cancelled; rebinding before that fails with EADDRINUSE.
+    // Closing handles are counted until they finish; rebinding before that fails with EADDRINUSE.
     private func takeAllLocked() -> Report {
-        let listeners = [udpListener, tcpListener].compactMap { $0 }
-        for listener in listeners { closingListeners[ObjectIdentifier(listener)] = listener }
-        let report = Report(listeners: listeners, connections: connections.values.map(\.connection))
-        udpListener = nil
-        tcpListener = nil
-        readyListeners = []
-        port = nil
-        connections = [:]
+        attempt += 1
+        retryArmed = false
+        var report = Report(connections: streams.values.map(\.connection))
+        if let streamListener {
+            report.listeners = [streamListener]
+            closing += 1
+        }
+        if let datagramSource {
+            report.sockets = [datagramSource]
+            closing += 1
+        }
+        streamListener = nil
+        datagramSource = nil
+        streamReady = false
+        boundPort = nil
+        streams = [:]
         return report
     }
 
-    private func accept(_ connection: NWConnection, from listener: ObjectIdentifier, datagram: Bool) {
+    private func accept(_ connection: NWConnection, from listener: ObjectIdentifier) {
         let accepted: UInt64? = lock.withLock {
-            let current = datagram ? udpListener : tcpListener
-            guard current.map(ObjectIdentifier.init) == listener else { return nil }
-            nextConnectionID += 1
-            connections[nextConnectionID] = Tracked(connection: connection, activity: 0)
-            return nextConnectionID
+            guard streamListener.map(ObjectIdentifier.init) == listener, streams.count < Self.maxStreams else {
+                return nil
+            }
+            nextStreamID += 1
+            streams[nextStreamID] = Stream(connection: connection, activity: 0)
+            return nextStreamID
         }
         guard let id = accepted else {
             connection.cancel()
@@ -223,25 +348,10 @@ final class WildcardDNSService: @unchecked Sendable {
         }
         connection.start(queue: queue)
         touch(id)
-        if datagram {
-            receiveDatagram(on: connection, id: id)
-        } else {
-            receiveStream(on: connection, id: id, buffer: Data())
+        queue.asyncAfter(deadline: .now() + Self.streamLifetime) { [weak self] in
+            self?.end(id)
         }
-    }
-
-    private func receiveDatagram(on connection: NWConnection, id: UInt64) {
-        connection.receiveMessage { [weak self] content, _, _, error in
-            guard let self, error == nil else {
-                connection.cancel()
-                return
-            }
-            if let content, let reply = WildcardDNSResponder.response(to: content, matcher: currentMatcher) {
-                connection.send(content: reply, completion: .idempotent)
-            }
-            touch(id)
-            receiveDatagram(on: connection, id: id)
-        }
+        receiveStream(on: connection, id: id, buffer: Data())
     }
 
     private func receiveStream(on connection: NWConnection, id: UInt64, buffer: Data) {
@@ -291,9 +401,9 @@ final class WildcardDNSService: @unchecked Sendable {
 
     private func touch(_ id: UInt64) {
         let activity: UInt64? = lock.withLock {
-            guard var tracked = connections[id] else { return nil }
+            guard var tracked = streams[id] else { return nil }
             tracked.activity += 1
-            connections[id] = tracked
+            streams[id] = tracked
             return tracked.activity
         }
         guard let activity else { return }
@@ -304,12 +414,16 @@ final class WildcardDNSService: @unchecked Sendable {
 
     private func expire(_ id: UInt64, ifStillAt activity: UInt64) {
         let idle = lock.withLock {
-            connections[id].flatMap { $0.activity == activity ? $0.connection : nil }
+            streams[id].flatMap { $0.activity == activity ? $0.connection : nil }
         }
         idle?.cancel()
     }
 
+    private func end(_ id: UInt64) {
+        lock.withLock { streams[id]?.connection }?.cancel()
+    }
+
     private func forget(_ id: UInt64) {
-        lock.withLock { _ = connections.removeValue(forKey: id) }
+        lock.withLock { _ = streams.removeValue(forKey: id) }
     }
 }
