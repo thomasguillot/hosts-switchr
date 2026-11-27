@@ -52,6 +52,8 @@ public struct MergeStats: Sendable, Equatable {
 
 /// Merge order: local content → local fragments → remote sources, so first-match-wins gives local precedence.
 public struct MergedHostsComposer: Sendable {
+    public static let maxSourceShadowedNames = 10_000
+
     private nonisolated(unsafe) let fileManager: FileManager
     public init(fileManager: FileManager = .default) { self.fileManager = fileManager }
 
@@ -68,6 +70,26 @@ public struct MergedHostsComposer: Sendable {
         texts.reduce(into: Set<String>()) {
             $0.formUnion(WildcardCollector.shadowedNames(in: HostsFile(parsing: $1), under: rules))
         }
+    }
+
+    private static func lowercasedASCII(_ data: Data) -> Data {
+        Data(data.map { (65...90).contains($0) ? $0 + 32 : $0 })
+    }
+
+    private static func sourceShadowed(in data: Data, under rules: [WildcardRule], limit: Int) -> Set<String> {
+        guard limit > 0 else { return [] }
+        let lowered = lowercasedASCII(data)
+        let needles = rules.flatMap { rule in [".", " ", "\t"].map { $0 + rule.suffix } }
+        guard needles.contains(where: { lowered.range(of: Data($0.utf8)) != nil }) else { return [] }
+        var names: Set<String> = []
+        for line in String(decoding: lowered, as: UTF8.self).split(separator: "\n")
+        where needles.contains(where: { line.range(of: $0) != nil }) {
+            for name in WildcardCollector.shadowedNames(in: HostsFile(parsing: String(line)), under: rules) {
+                guard names.count < limit else { return names }
+                names.insert(name)
+            }
+        }
+        return names
     }
 
     public func compose(
@@ -91,6 +113,7 @@ public struct MergedHostsComposer: Sendable {
 
         var perSource: [SourceStat] = []
         var total = 0
+        var fromSources: Set<String> = []
 
         for (index, fragment) in localFragments.enumerated() {
             let safeName = fragment.name.replacingOccurrences(of: "\r", with: " ")
@@ -122,14 +145,15 @@ public struct MergedHostsComposer: Sendable {
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
-            let text = (!rules.isEmpty || source.domainCount == nil) ? String(decoding: data, as: UTF8.self) : ""
             if !rules.isEmpty {
-                shadowed.formUnion(WildcardCollector.shadowedNames(in: HostsFile(parsing: text), under: rules))
+                fromSources.formUnion(Self.sourceShadowed(
+                    in: data, under: rules, limit: Self.maxSourceShadowedNames - fromSources.count))
             }
-            let count = source.domainCount ?? HostsScan.mappingLineCount(text)
+            let count = source.domainCount ?? HostsScan.mappingLineCount(String(decoding: data, as: UTF8.self))
             perSource.append(SourceStat(name: source.name, domains: count))
             total += count
         }
+        shadowed.formUnion(fromSources)
         return MergeStats(totalDomains: total, perSource: perSource,
                           wildcards: WildcardSet(rules: rules, shadowedNames: shadowed))
     }

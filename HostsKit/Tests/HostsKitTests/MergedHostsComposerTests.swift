@@ -235,3 +235,31 @@ private func tempDir() -> URL {
         sources: [SourceLayer(name: "S", cacheURL: cache, expectedHash: nil)], to: dir.appendingPathComponent("m.hosts"))
     #expect(stats.perSource == [SourceStat(name: "Dev", domains: 2, wildcards: 1), SourceStat(name: "S", domains: 3)])
 }
+
+@Test func compose_sourceShadowingMatchesAnyCaseAndTheApex() throws {
+    let dir = tempDir()
+    let cache = dir.appendingPathComponent("s.hosts")
+    try "0.0.0.0 ADS.Test\n0.0.0.0 app.test\n0.0.0.0 speedtest.net latest.example\n0.0.0.0 x.testing.com\n"
+        .write(to: cache, atomically: true, encoding: .utf8)
+    let stats = try MergedHostsComposer().compose(
+        localContent: "127.0.0.1 *.test\n127.0.0.1 *.app.test", localFragments: [],
+        sources: [SourceLayer(name: "S", cacheURL: cache, expectedHash: nil)], to: dir.appendingPathComponent("m.hosts"))
+    #expect(stats.wildcards.shadowedNames == ["ads.test", "app.test"])
+}
+
+@Test func compose_namesShadowedBySourcesAreCapped() throws {
+    let dir = tempDir()
+    let limit = MergedHostsComposer.maxSourceShadowedNames
+    let first = dir.appendingPathComponent("a.hosts")
+    let second = dir.appendingPathComponent("b.hosts")
+    try (0..<(limit - 10)).map { "0.0.0.0 a\($0).test\n" }.joined().write(to: first, atomically: true, encoding: .utf8)
+    try (0..<50).map { "0.0.0.0 b\($0).test\n" }.joined().write(to: second, atomically: true, encoding: .utf8)
+    let stats = try MergedHostsComposer().compose(
+        localContent: "127.0.0.1 *.test\n127.0.0.1 local.test", localFragments: [],
+        sources: [SourceLayer(name: "A", cacheURL: first, expectedHash: nil),
+                  SourceLayer(name: "B", cacheURL: second, expectedHash: nil)],
+        to: dir.appendingPathComponent("m.hosts"))
+    #expect(stats.wildcards.shadowedNames.count == limit + 1)
+    #expect(stats.wildcards.shadowedNames.contains("local.test"))
+    #expect(stats.perSource.map(\.domains) == [limit - 10, 50])
+}
