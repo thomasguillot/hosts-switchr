@@ -59,10 +59,8 @@ public struct MergedHostsComposer: Sendable {
         guard text.contains("*") else { return text }
         return text.components(separatedBy: "\n").map { line in
             guard case let .mapping(ip, hostnames) = HostsFile.parseLine(line).kind,
-                  WildcardCollector.isWildcardAttempt(hostnames) else { return line }
-            let note = WildcardCollector.collectableSuffix(ip: ip, hostnames: hostnames) != nil
-                ? "wildcard, served by Hosts Switchr" : "wildcard ignored"
-            return "# " + line.trimmingCharacters(in: .whitespacesAndNewlines) + "  (" + note + ")"
+                  WildcardCollector.collectableSuffix(ip: ip, hostnames: hostnames) != nil else { return line }
+            return "# " + line.trimmingCharacters(in: .whitespacesAndNewlines) + "  (wildcard, served by Hosts Switchr)"
         }.joined(separator: "\n")
     }
 

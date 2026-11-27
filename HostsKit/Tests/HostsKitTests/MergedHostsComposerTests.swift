@@ -170,12 +170,11 @@ private func tempDir() -> URL {
     #expect(stats.totalDomains == 0)
 }
 
-@Test func compose_refusedOrMixedWildcardIsIgnored() throws {
+@Test func compose_refusedOrMixedWildcardIsWrittenAsTyped() throws {
     let out = tempDir().appendingPathComponent("merged.hosts")
-    let stats = try MergedHostsComposer().compose(
-        localContent: "127.0.0.1 *.local\n127.0.0.1 *.test www.test", localFragments: [], sources: [], to: out)
-    #expect(try String(contentsOf: out, encoding: .utf8)
-        == "# 127.0.0.1 *.local  (wildcard ignored)\n# 127.0.0.1 *.test www.test  (wildcard ignored)\n")
+    let content = "127.0.0.1 *.local\n  127.0.0.1 *.test www.test\n0.0.0.0 ads.example.com *.doubleclick.net"
+    let stats = try MergedHostsComposer().compose(localContent: content, localFragments: [], sources: [], to: out)
+    #expect(try String(contentsOf: out, encoding: .utf8) == content + "\n")
     #expect(stats.wildcards == .empty)
 }
 
@@ -200,11 +199,13 @@ private func tempDir() -> URL {
     #expect(stats.wildcards.shadowedNames == ["ads.test"])
 }
 
-@Test func compose_plainNamesOnCommentedMixedLineAreNotShadowed() throws {
+@Test func compose_plainNamesOnWrittenMixedLineAreShadowed() throws {
     let out = tempDir().appendingPathComponent("merged.hosts")
     let stats = try MergedHostsComposer().compose(
         localContent: "127.0.0.1 *.test\n127.0.0.1 *.test www.test\n127.0.0.1 a.test", localFragments: [], sources: [], to: out)
-    #expect(stats.wildcards.shadowedNames == ["a.test"])
+    #expect(try String(contentsOf: out, encoding: .utf8)
+        == "# 127.0.0.1 *.test  (wildcard, served by Hosts Switchr)\n127.0.0.1 *.test www.test\n127.0.0.1 a.test\n")
+    #expect(stats.wildcards.shadowedNames == ["a.test", "www.test"])
 }
 
 @Test func compose_crlfWildcardLineIsServed() throws {
