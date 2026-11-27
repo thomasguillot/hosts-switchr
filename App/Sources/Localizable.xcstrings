@@ -4359,31 +4359,31 @@
         }
       }
     },
-    "The hosts file was updated, but wildcard domains couldn't be set up. Apply again to retry.": {
+    "The hosts file was updated, but wildcard domains couldn't be set up. /etc/resolver must be a folder owned by root.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The hosts file was updated, but wildcard domains couldn't be set up. Apply again to retry."
+            "value": "The hosts file was updated, but wildcard domains couldn't be set up. /etc/resolver must be a folder owned by root."
           }
         },
         "en-GB": {
           "stringUnit": {
             "state": "translated",
-            "value": "The hosts file was updated, but wildcard domains couldn't be set up. Apply again to retry."
+            "value": "The hosts file was updated, but wildcard domains couldn't be set up. /etc/resolver must be a folder owned by root."
           }
         },
         "es": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Se actualizó el archivo hosts, pero no se pudieron configurar los dominios comodín. Vuelve a aplicar para intentarlo de nuevo."
+            "value": "Se actualizó el archivo hosts, pero no se pudieron configurar los dominios comodín. /etc/resolver debe ser una carpeta propiedad de root."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Le fichier hosts a été mis à jour, mais les domaines joker n’ont pas pu être configurés. Appliquez à nouveau pour réessayer."
+            "value": "Le fichier hosts a été mis à jour, mais les domaines joker n’ont pas pu être configurés. /etc/resolver doit être un dossier appartenant à root."
           }
         }
       }

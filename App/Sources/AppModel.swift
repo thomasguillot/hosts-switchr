@@ -443,7 +443,7 @@ final class AppModel {
             .appendingPathComponent("hostsswitchr-merged-\(UUID().uuidString).hosts")
     }
 
-    private struct ApplyOutcome { let sourceGen: Int; let fragGen: Int; let wildcards: WildcardDeployment }
+    private struct ApplyOutcome { let sourceGen: Int; let fragGen: Int; let wildcards: WildcardDeployment; let resolverFailed: Bool }
     // Pre-compose generations let callers detect a mid-apply change before clearing the stale badge.
     private func composeAndApply(_ profile: Profile) async throws -> ApplyOutcome {
         // Fail-closed: a failed flush leaves pendingSave set so the guards below abort the apply.
@@ -469,7 +469,7 @@ final class AppModel {
         defer { prepared.discardStaging() }
         let result = try applier.apply(stagedURL: temp, resolverWrites: prepared.writes, resolverRemovals: prepared.removals)
         if let message = wildcards.didApply(prepared, resolverFailed: result.resolverFailed) { lastError = message }
-        return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen, wildcards: prepared.deployment)
+        return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen, wildcards: wildcards.served ?? prepared.deployment, resolverFailed: result.resolverFailed)
     }
 
     private(set) var appliedState: AppliedProfileState?
@@ -512,7 +512,7 @@ final class AppModel {
             lastError = String(localized: "Applied \(p.name), but saving active-profile state failed: \(error.localizedDescription). It may not persist across relaunch.")
         }
         refresh()
-        notify("Hosts Switchr", "Applied \(p.name)")
+        if !outcome.resolverFailed { notify("Hosts Switchr", "Applied \(p.name)") }
     }
 
     // MARK: Refresh + auto-reapply
@@ -567,7 +567,7 @@ final class AppModel {
                         appliedState = snap.with(outcome.wildcards); appliedState?.save(to: AppliedProfileState.url(root: supportRoot))
                         if wildcards.resolverDrift { staleProfileIDs.insert(activeID) }
                         else if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
-                        notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists")
+                        if !outcome.resolverFailed { notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists") }
                     } catch {
                         lastError = String(localized: "Auto re-apply failed (\(error.localizedDescription)). Re-apply when ready.")
                     }
