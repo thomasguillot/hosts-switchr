@@ -56,7 +56,8 @@ final class WildcardController {
     }
 
     @discardableResult
-    func restore(_ recorded: WildcardDeployment?, current: WildcardSet) -> Bool {
+    func restore(_ loaded: WildcardDeployment?, current: WildcardSet) -> Bool {
+        let recorded = loaded?.isWithinPolicy == true ? loaded : nil
         let deployment = recorded ?? WildcardDeployment(served: current, resolverDomains: [], port: WildcardDNS.defaultPort)
         let existing = ResolverDirectory.read(resolverDirectory)
         served = deployment

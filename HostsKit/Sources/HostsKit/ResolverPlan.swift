@@ -48,6 +48,15 @@ public struct WildcardDeployment: Codable, Equatable, Sendable {
         self.resolverDomains = resolverDomains
         self.port = port
     }
+
+    public var isWithinPolicy: Bool {
+        port == WildcardDNS.defaultPort
+            && resolverDomains.allSatisfy(WildcardSuffixPolicy.isValid)
+            && served.rules.allSatisfy { rule in
+                WildcardSuffixPolicy.isValid(rule.suffix)
+                    && [rule.ipv4, rule.ipv6].allSatisfy { $0.map(HostsValidator.isValidIP) ?? true }
+            }
+    }
 }
 
 public struct ResolverPlan: Equatable, Sendable {

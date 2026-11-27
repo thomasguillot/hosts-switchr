@@ -109,3 +109,25 @@ import Testing
         #expect(!ResolverPlan.needsReapply(recorded: withoutDomains, current: .empty, existing: nil))
     }
 }
+
+@Suite struct WildcardDeploymentPolicyTests {
+    private func deployment(suffix: String = "test", ipv4: String? = "127.0.0.1", domains: [String] = ["test"],
+                            port: UInt16 = WildcardDNS.defaultPort) -> WildcardDeployment {
+        WildcardDeployment(served: WildcardSet(rules: [WildcardRule(suffix: suffix, ipv4: ipv4, ipv6: nil)], shadowedNames: []),
+                           resolverDomains: domains, port: port)
+    }
+
+    @Test func aDeploymentTheAppWroteIsWithinPolicy() {
+        #expect(deployment().isWithinPolicy)
+        #expect(deployment(suffix: "app.internal", domains: ["app.internal"]).isWithinPolicy)
+        #expect(WildcardDeployment(served: .empty, resolverDomains: [], port: WildcardDNS.defaultPort).isWithinPolicy)
+    }
+
+    @Test func anEditedDeploymentIsNot() {
+        #expect(!deployment(port: 53).isWithinPolicy)
+        #expect(!deployment(suffix: "example.com").isWithinPolicy)
+        #expect(!deployment(suffix: "internal").isWithinPolicy)
+        #expect(!deployment(domains: ["../etc"]).isWithinPolicy)
+        #expect(!deployment(ipv4: "not-an-ip").isWithinPolicy)
+    }
+}
