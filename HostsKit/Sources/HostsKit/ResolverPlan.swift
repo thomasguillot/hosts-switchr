@@ -96,7 +96,7 @@ public struct ResolverPlan: Equatable, Sendable {
 
     public static func needsReapply(recorded: WildcardDeployment?, current: WildcardSet, existing: [String: String]?) -> Bool {
         guard let recorded else { return !current.isEmpty }
-        guard let existing else { return true }
+        guard let existing else { return !recorded.resolverDomains.isEmpty }
         let expected = ResolverFile.contents(port: recorded.port)
         if recorded.resolverDomains.contains(where: { existing[$0] != expected }) { return true }
         let plan = make(desired: recorded.resolverDomains, port: recorded.port, existing: existing)

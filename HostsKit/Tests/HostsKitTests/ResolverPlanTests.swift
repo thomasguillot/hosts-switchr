@@ -93,4 +93,11 @@ import Testing
         let d = WildcardDeployment(served: .empty, resolverDomains: ["test"], port: 53535)
         #expect(ResolverPlan.needsReapply(recorded: d, current: .empty, existing: nil))
     }
+
+    @Test func needsReapply_unreadableDirectoryLatchesOnlyWhenResolverFilesWereRecorded() {
+        let withDomains = WildcardDeployment(served: .empty, resolverDomains: ["test"], port: 53535)
+        let withoutDomains = WildcardDeployment(served: .empty, resolverDomains: [], port: 53535)
+        #expect(ResolverPlan.needsReapply(recorded: withDomains, current: .empty, existing: nil))
+        #expect(!ResolverPlan.needsReapply(recorded: withoutDomains, current: .empty, existing: nil))
+    }
 }
