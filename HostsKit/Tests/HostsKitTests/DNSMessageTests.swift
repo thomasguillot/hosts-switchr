@@ -142,14 +142,15 @@ private func count(_ r: Data, at i: Int) -> Int { Int(byte(r, i)) << 8 | Int(byt
         let dotted = raw([Array("a.test".utf8)])
         let nonHostname = [raw([Array("a b".utf8), Array("test".utf8)]),
                            raw([[0x61, 0x00], Array("test".utf8)]),
-                           raw([Array("é".utf8), Array("test".utf8)]),
-                           raw([Array("_x".utf8), Array("test".utf8)])]
+                           raw([Array("é".utf8), Array("test".utf8)])]
         for bad in [dotted] + nonHostname {
             let r = try #require(WildcardDNSResponder.response(to: bad, matcher: matcher))
             #expect(rcode(r) == 5 && count(r, at: 4) == 1 && count(r, at: 6) == 0)
         }
-        let r = try #require(WildcardDNSResponder.response(to: raw([Array("A-1".utf8), Array("test".utf8)]), matcher: matcher))
-        #expect(rcode(r) == 0 && count(r, at: 6) == 1)
+        for label in ["A-1", "_x", "my_app"] {
+            let r = try #require(WildcardDNSResponder.response(to: raw([Array(label.utf8), Array("test".utf8)]), matcher: matcher))
+            #expect(rcode(r) == 0 && count(r, at: 6) == 1, "\(label)")
+        }
     }
 
     @Test func responder_survivesEveryTruncationAndSingleByteMutation() {
