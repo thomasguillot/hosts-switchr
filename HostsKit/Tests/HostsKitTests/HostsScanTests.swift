@@ -45,3 +45,10 @@ import Testing
     #expect(HostsScan.looksLikeHostsFile(text) == true)
     #expect(HostsScan.mappingLineCount(text) == 3)
 }
+
+@Test func scan_mappingCountIsUnchangedByWildcardSupport() {
+    let text = "127.0.0.1 *.test\n127.0.0.1 a.test\n127.0.0.1 *.local\n127.0.0.1 *.test b.test\n0.0.0.0 *.ads.example"
+    #expect(HostsScan.mappingLineCount(text) == 5)
+    #expect(HostsScan.wildcardLineCount(text) == 1)
+    #expect(HostsScan.localDomainLineCount(text) == 4)
+}

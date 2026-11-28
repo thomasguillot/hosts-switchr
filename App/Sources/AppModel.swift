@@ -24,6 +24,7 @@ final class AppModel {
     private let applier: HostsApplier
     private let runner: AuthorizationPrivilegedRunner
     private let composer = MergedHostsComposer()
+    let wildcards = WildcardController()
     private let fetcher: SourceFetching
     private var prefs = Preferences()
     private var saveTask: Task<Void, Never>?
@@ -67,6 +68,7 @@ final class AppModel {
             refresh()
             if let s = AppliedProfileState.load(from: AppliedProfileState.url(root: supportRoot)),
                s.profile.id == store.activeProfileID { appliedState = s; recomputeActiveStale() }
+            if wildcards.restore(appliedState?.wildcards, current: activeWildcardSet()), let id = activeProfileID { staleProfileIDs.insert(id) }
             if scheduler == nil {
                 let s = RefreshScheduler(model: self); s.start(); self.scheduler = s
             }
@@ -174,11 +176,6 @@ final class AppModel {
         flushPendingFragmentSave()
     }
 
-    func warnings(for id: UUID) -> [HostsWarning] {
-        guard let p = profiles.first(where: { $0.id == id }) else { return [] }
-        return HostsValidator.validate(HostsFile(parsing: p.content))
-    }
-
     // MARK: Per-profile source selection
 
     func setProfileSources(_ id: UUID, _ ids: [UUID]) {
@@ -236,11 +233,6 @@ final class AppModel {
         var ids = fragments.map(\.id); ids.move(fromOffsets: source, toOffset: destination)
         do { try fragmentStore.reorder(ids); refresh() }
         catch { lastError = String(localized: "Couldn’t reorder the fragments. Please try again.") }
-    }
-
-    func warningsForFragment(_ id: UUID) -> [HostsWarning] {
-        guard let f = fragments.first(where: { $0.id == id }) else { return [] }
-        return HostsValidator.validate(HostsFile(parsing: f.content))
     }
 
     func updateFragmentContent(_ id: UUID, content: String) {
@@ -425,7 +417,7 @@ final class AppModel {
 
     // MARK: Apply
 
-    private func resolveFragments(for profile: Profile) -> [NamedContent] {
+    func resolveFragments(for profile: Profile) -> [NamedContent] {
         profile.fragmentIDs.compactMap { fid in
             fragments.first { $0.id == fid }.map { NamedContent(name: $0.name, content: $0.content) }
         }
@@ -451,7 +443,7 @@ final class AppModel {
             .appendingPathComponent("hostsswitchr-merged-\(UUID().uuidString).hosts")
     }
 
-    private struct ApplyOutcome { let sourceGen: Int; let fragGen: Int }
+    private struct ApplyOutcome { let sourceGen: Int; let fragGen: Int; let wildcards: WildcardDeployment; let resolverFailed: Bool }
     // Pre-compose generations let callers detect a mid-apply change before clearing the stale badge.
     private func composeAndApply(_ profile: Profile) async throws -> ApplyOutcome {
         // Fail-closed: a failed flush leaves pendingSave set so the guards below abort the apply.
@@ -470,21 +462,25 @@ final class AppModel {
         let temp = stagedTempURL()
         defer { try? FileManager.default.removeItem(at: temp) }
         let composer = self.composer
-        _ = try await Task.detached(priority: .userInitiated) {
-            try composer.compose(localContent: local, localFragments: frags, sources: resolved, to: temp)
+        let set = try await Task.detached(priority: .userInitiated) {
+            try composer.compose(localContent: local, localFragments: frags, sources: resolved, to: temp).wildcards
         }.value
-        try applier.apply(stagedURL: temp)
-        return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen)
+        let prepared = wildcards.prepare(set)
+        let result = try applier.apply(stagedURL: temp, resolverWrites: prepared.writes, resolverRemovals: prepared.removals)
+        let applied = wildcards.didApply(prepared, resolverFailed: result.resolverFailed)
+        if let failure = applied.failure { lastError = failure }
+        if let notice = applied.notice { notify("Hosts Switchr", notice) }
+        return ApplyOutcome(sourceGen: sourceGen, fragGen: fragGen, wildcards: applied.deployment, resolverFailed: result.resolverFailed)
     }
 
     private(set) var appliedState: AppliedProfileState?
 
     // No snapshot (pre-first-apply) falls back to insert: fail-safe toward stale, never toward clean.
-    private func recomputeActiveStale() {
+    func recomputeActiveStale() {
         guard let id = activeProfileID else { return }
         guard let a = appliedState, a.profile.id == id,
               let cur = profiles.first(where: { $0.id == id }) else { staleProfileIDs.insert(id); return }
-        if a.matches(cur, fragments: fragments, sources: sources) { staleProfileIDs.remove(id) }
+        if a.matches(cur, fragments: fragments, sources: sources) && !wildcards.resolverDrift { staleProfileIDs.remove(id) }
         else { staleProfileIDs.insert(id) }
     }
 
@@ -509,14 +505,15 @@ final class AppModel {
         }
         // Commit point: a later metadata-save failure must not be reported as an apply failure.
         store.setActive(id)
-        appliedState = snap; snap.save(to: AppliedProfileState.url(root: supportRoot))
-        if snapshotIsCurrent(p) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(id) }
+        appliedState = snap.with(outcome.wildcards); appliedState?.save(to: AppliedProfileState.url(root: supportRoot))
+        if wildcards.resolverDrift { staleProfileIDs.insert(id) }
+        else if snapshotIsCurrent(p) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(id) }
 
         do { try store.save() } catch {
             lastError = String(localized: "Applied \(p.name), but saving active-profile state failed: \(error.localizedDescription). It may not persist across relaunch.")
         }
         refresh()
-        notify("Hosts Switchr", "Applied \(p.name)")
+        if !outcome.resolverFailed { notify("Hosts Switchr", "Applied \(p.name)") }
     }
 
     // MARK: Refresh + auto-reapply
@@ -568,9 +565,10 @@ final class AppModel {
                     do {
                         let snap = AppliedProfileState.capture(active, fragments: fragments, sources: sources)
                         let outcome = try await composeAndApply(active)
-                        appliedState = snap; snap.save(to: AppliedProfileState.url(root: supportRoot))
-                        if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
-                        notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists")
+                        appliedState = snap.with(outcome.wildcards); appliedState?.save(to: AppliedProfileState.url(root: supportRoot))
+                        if wildcards.resolverDrift { staleProfileIDs.insert(activeID) }
+                        else if snapshotIsCurrent(active) && sourceCacheGeneration == outcome.sourceGen && fragmentGeneration == outcome.fragGen { staleProfileIDs.remove(activeID) }
+                        if !outcome.resolverFailed { notify("Hosts Switchr", "Updated \(active.name) from refreshed blocklists") }
                     } catch {
                         lastError = String(localized: "Auto re-apply failed (\(error.localizedDescription)). Re-apply when ready.")
                     }

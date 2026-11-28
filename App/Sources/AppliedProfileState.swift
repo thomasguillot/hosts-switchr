@@ -8,6 +8,7 @@ struct AppliedProfileState: Codable {
     let profile: Profile
     let fragmentContents: [UUID: String]
     let sourceHashes: [UUID: String]
+    let wildcards: WildcardDeployment?
 
     static func url(root: URL) -> URL {
         root.appendingPathComponent("appliedstate.json", isDirectory: false)
@@ -21,7 +22,12 @@ struct AppliedProfileState: Codable {
         let hashes = Dictionary(uniqueKeysWithValues: profile.sourceIDs.compactMap { id in
             sources.first { $0.id == id }?.contentHash.map { (id, $0) }
         })
-        return AppliedProfileState(profile: profile, fragmentContents: frags, sourceHashes: hashes)
+        return AppliedProfileState(profile: profile, fragmentContents: frags, sourceHashes: hashes, wildcards: nil)
+    }
+
+    func with(_ wildcards: WildcardDeployment) -> AppliedProfileState {
+        AppliedProfileState(profile: profile, fragmentContents: fragmentContents, sourceHashes: sourceHashes,
+                            wildcards: wildcards)
     }
 
     func matches(_ current: Profile, fragments: [LocalFragment], sources: [RemoteSource]) -> Bool {

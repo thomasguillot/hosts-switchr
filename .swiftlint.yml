@@ -15,7 +15,7 @@ disabled_rules:
   # triggering on existing lines that swift-format would wrap in a future format pass.
   - line_length
   # Trailing commas on multi-line collection literals are a style preference;
-  # AuthorizationPrivilegedRunner.swift cannot be modified (privileged-runner contract).
+  # AuthorizationPrivilegedRunner.swift is kept free of reformatting churn (privileged-runner contract).
   - trailing_comma
   # AppModel is a single-class scene coordinator; splitting it would add indirection with
   # no safety benefit at this project size, and splitting across files would force relaxing

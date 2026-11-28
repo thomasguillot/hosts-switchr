@@ -34,7 +34,7 @@ struct PreviewSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Blocklists").font(.caption).foregroundStyle(.secondary)
                 ForEach(data.stats.perSource, id: \.name) { s in
-                    Text("\(s.name)  —  \(Localized.domains(s.domains))").font(.caption)
+                    Text("\(s.name)  —  \(Localized.layerSize(s))").font(.caption)
                 }
                 Text(Localized.nullRoutedTotal(data.stats.totalDomains))
                     .font(.caption).bold()

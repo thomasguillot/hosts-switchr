@@ -39,6 +39,17 @@ struct DocumentationView: View {
                 hosts file is backed up automatically before each apply.
                 """)
 
+                section("Wildcard domains", """
+                A line such as `127.0.0.1 *.test` sends every name under .test to that address, \
+                so a new local site needs no hosts line of its own. Wildcards work under .test, \
+                or under a name inside .internal such as `*.app.internal`, in profiles and \
+                fragments but not in sources. Hosts Switchr answers these names itself, so they \
+                resolve only while the app is running. An explicit line for a name always wins \
+                over a wildcard. Wildcard domains assume one person uses Hosts Switchr on the Mac. \
+                Before deleting the app, apply a profile without wildcards so the files it added \
+                to /etc/resolver are removed.
+                """)
+
                 section("Menu bar & Settings", """
                 Switch profiles, refresh sources, or open the window from the menu-bar icon. \
                 In Settings you can set the auto-refresh interval, re-apply the active profile \

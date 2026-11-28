@@ -88,4 +88,13 @@ import Foundation
         #expect(plan.fragmentIDsToDelete == [fragID])
         #expect(plan.customSourceIDsToDelete == [customID])       // builtin kept
     }
+
+    @Test func importKeepsWildcardLines() {
+        let b = ConfigBundle.export(profiles: [Profile(name: "W", content: "127.0.0.1 *.test")],
+                                    fragments: [LocalFragment(name: "F", content: "127.0.0.1 *.internal")],
+                                    sources: [], exportedAt: epoch)
+        let plan = ConfigBundle.plan(b, mode: .merge, existingProfiles: [], existingFragments: [], existingSources: [])
+        #expect(plan.profilesToAdd.map(\.content) == ["127.0.0.1 *.test"])
+        #expect(plan.fragmentsToAdd.map(\.content) == ["127.0.0.1 *.internal"])
+    }
 }

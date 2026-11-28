@@ -10,6 +10,19 @@ public enum HostsScan {
         return count
     }
 
+    public static func localDomainLineCount(_ text: String) -> Int {
+        mappingLineCount(text) - wildcardLineCount(text)
+    }
+
+    public static func wildcardLineCount(_ text: String) -> Int {
+        var count = 0
+        text.enumerateLines { line, _ in
+            if case let .mapping(ip, hostnames) = HostsFile.parseLine(line).kind,
+               WildcardCollector.collectableSuffix(ip: ip, hostnames: hostnames) != nil { count += 1 }
+        }
+        return count
+    }
+
     public static func looksLikeHostsFile(_ text: String) -> Bool {
         var mapping = 0
         var content = 0

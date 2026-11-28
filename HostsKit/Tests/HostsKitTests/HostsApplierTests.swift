@@ -12,16 +12,18 @@ final class MockRunner: PrivilegedRunner, @unchecked Sendable {
     /// When true, return a path to a snapshot file that does NOT exist, so HostsApplier's copy-out
     /// throws — simulates a committed privileged apply whose post-commit copy-out fails.
     var returnMissingSnapshot = false
+    var resolverFails = false
     /// Paths of snapshot temp files this mock created (so tests can inspect/clean them).
     private(set) var snapshotPaths: [String] = []
 
-    func apply(_ request: ApplyRequest) throws -> String {
+    func apply(_ request: ApplyRequest) throws -> PrivilegedApplyResult {
         received = request
         if let shouldThrow { throw shouldThrow }
         if returnMissingSnapshot {
             // A path the runner "committed" to but whose file was never created — copy-out will throw.
-            return FileManager.default.temporaryDirectory
+            let missing = FileManager.default.temporaryDirectory
                 .appendingPathComponent("missing-snap-\(UUID().uuidString)").path
+            return PrivilegedApplyResult(snapshotPath: missing, resolverFailed: resolverFails)
         }
         // The real runner snapshots /etc/hosts into a root-owned temp inside /etc and returns its
         // path; the mock emulates that with a real file in a test temp dir so copy-out can read it.
@@ -29,7 +31,7 @@ final class MockRunner: PrivilegedRunner, @unchecked Sendable {
             .appendingPathComponent("snap-\(UUID().uuidString)").path
         try Data(snapshotContent.utf8).write(to: URL(fileURLWithPath: path))
         snapshotPaths.append(path)
-        return path
+        return PrivilegedApplyResult(snapshotPath: path, resolverFailed: resolverFails)
     }
 }
 
@@ -45,7 +47,7 @@ private func tempDir() -> URL {
     try "127.0.0.1 localhost".write(to: staged, atomically: true, encoding: .utf8)
     let applier = HostsApplier(runner: runner, backupsDir: dir)
 
-    let backupURL = try #require(try applier.apply(stagedURL: staged))
+    let backupURL = try #require(try applier.apply(stagedURL: staged).backupURL)
 
     #expect(runner.received?.stagedPath == staged.path)
     #expect(backupURL.deletingLastPathComponent().standardizedFileURL == dir.standardizedFileURL)
@@ -62,7 +64,7 @@ private func tempDir() -> URL {
     try "127.0.0.1 localhost".write(to: staged, atomically: true, encoding: .utf8)
     let applier = HostsApplier(runner: runner, backupsDir: dir)
 
-    let backupURL = try #require(try applier.apply(stagedURL: staged))
+    let backupURL = try #require(try applier.apply(stagedURL: staged).backupURL)
 
     let contents = try String(contentsOf: backupURL, encoding: .utf8)
     #expect(contents == "snapshot-of-etc-hosts-at-commit-time")
@@ -76,7 +78,7 @@ private func tempDir() -> URL {
     try "127.0.0.1 localhost".write(to: staged, atomically: true, encoding: .utf8)
     let applier = HostsApplier(runner: runner, backupsDir: dir)
 
-    let backupURL = try #require(try applier.apply(stagedURL: staged))
+    let backupURL = try #require(try applier.apply(stagedURL: staged).backupURL)
 
     let perms = try FileManager.default.attributesOfItem(atPath: backupURL.path)[.posixPermissions] as? NSNumber
     #expect(perms?.intValue == 0o600)
@@ -90,8 +92,8 @@ private func tempDir() -> URL {
     try "127.0.0.1 localhost".write(to: staged, atomically: true, encoding: .utf8)
     let applier = HostsApplier(runner: runner, backupsDir: dir)
 
-    let b1 = try #require(try applier.apply(stagedURL: staged))
-    let b2 = try #require(try applier.apply(stagedURL: staged))
+    let b1 = try #require(try applier.apply(stagedURL: staged).backupURL)
+    let b2 = try #require(try applier.apply(stagedURL: staged).backupURL)
 
     #expect(b1 != b2)
     #expect(b1.lastPathComponent.hasPrefix("etc-hosts-"))
@@ -115,7 +117,7 @@ private func tempDir() -> URL {
     }
 
     let applier = HostsApplier(runner: runner, backupsDir: dir)
-    let backupURL = try #require(try applier.apply(stagedURL: staged))
+    let backupURL = try #require(try applier.apply(stagedURL: staged).backupURL)
 
     #expect(FileManager.default.fileExists(atPath: backupURL.path))
     let remaining = (try FileManager.default.contentsOfDirectory(atPath: dir.path))
@@ -153,10 +155,28 @@ private func tempDir() -> URL {
     }
     let applier = HostsApplier(runner: runner, backupsDir: dir)
 
-    let result = try applier.apply(stagedURL: staged)
+    let result = try applier.apply(stagedURL: staged).backupURL
 
     #expect(result == nil)
     let baks = (try FileManager.default.contentsOfDirectory(atPath: dir.path))
         .filter { $0.hasPrefix("etc-hosts-") && $0.hasSuffix(".bak") }
     #expect(baks.count == 4)
+}
+
+@Test func applier_forwardsResolverChangesAndKeepsBackupWhenResolverStepFails() throws {
+    let runner = MockRunner()
+    runner.resolverFails = true
+    let dir = tempDir()
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let staged = dir.appendingPathComponent("staged.hosts")
+    try "127.0.0.1 localhost".write(to: staged, atomically: true, encoding: .utf8)
+    let writes = [ResolverWrite(domain: "test", port: 53535)]
+
+    let result = try HostsApplier(runner: runner, backupsDir: dir)
+        .apply(stagedURL: staged, resolverWrites: writes, resolverRemovals: ["old.test"])
+
+    #expect(runner.received == ApplyRequest(stagedPath: staged.path, resolverWrites: writes, resolverRemovals: ["old.test"]))
+    #expect(result.resolverFailed)
+    let backup = try #require(result.backupURL)
+    #expect(FileManager.default.fileExists(atPath: backup.path))
 }

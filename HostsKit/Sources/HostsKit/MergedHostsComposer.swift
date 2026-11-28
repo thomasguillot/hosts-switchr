@@ -33,22 +33,64 @@ public struct NamedContent: Sendable, Equatable {
 public struct SourceStat: Sendable, Equatable {
     public let name: String
     public let domains: Int
-    public init(name: String, domains: Int) { self.name = name; self.domains = domains }
+    public let wildcards: Int
+    public init(name: String, domains: Int, wildcards: Int = 0) {
+        self.name = name; self.domains = domains; self.wildcards = wildcards
+    }
 }
 
 public struct MergeStats: Sendable, Equatable {
     public let totalDomains: Int
     public let perSource: [SourceStat]
-    public init(totalDomains: Int, perSource: [SourceStat]) {
+    public let wildcards: WildcardSet
+    public init(totalDomains: Int, perSource: [SourceStat], wildcards: WildcardSet = .empty) {
         self.totalDomains = totalDomains
         self.perSource = perSource
+        self.wildcards = wildcards
     }
 }
 
 /// Merge order: local content → local fragments → remote sources, so first-match-wins gives local precedence.
 public struct MergedHostsComposer: Sendable {
+    public static let maxSourceShadowedNames = 10_000
+
     private nonisolated(unsafe) let fileManager: FileManager
     public init(fileManager: FileManager = .default) { self.fileManager = fileManager }
+
+    private static func commentingWildcards(_ text: String) -> String {
+        guard text.contains("*") else { return text }
+        return text.components(separatedBy: "\n").map { line in
+            guard case let .mapping(ip, hostnames) = HostsFile.parseLine(line).kind,
+                  WildcardCollector.collectableSuffix(ip: ip, hostnames: hostnames) != nil else { return line }
+            return "# " + line.trimmingCharacters(in: .whitespacesAndNewlines) + "  (wildcard, served by Hosts Switchr)"
+        }.joined(separator: "\n")
+    }
+
+    private static func shadowed(in texts: [String], under rules: [WildcardRule]) -> Set<String> {
+        texts.reduce(into: Set<String>()) {
+            $0.formUnion(WildcardCollector.shadowedNames(in: HostsFile(parsing: $1), under: rules))
+        }
+    }
+
+    private static func lowercasedASCII(_ data: Data) -> Data {
+        Data(data.map { (65...90).contains($0) ? $0 + 32 : $0 })
+    }
+
+    private static func sourceShadowed(in data: Data, under rules: [WildcardRule], limit: Int) -> Set<String> {
+        guard limit > 0 else { return [] }
+        let lowered = lowercasedASCII(data)
+        let needles = rules.flatMap { rule in [".", " ", "\t"].map { $0 + rule.suffix } }
+        guard needles.contains(where: { lowered.range(of: Data($0.utf8)) != nil }) else { return [] }
+        var names: Set<String> = []
+        for line in String(decoding: lowered, as: UTF8.self).split(separator: "\n")
+        where needles.contains(where: { line.range(of: $0) != nil }) {
+            for name in WildcardCollector.shadowedNames(in: HostsFile(parsing: String(line)), under: rules) {
+                guard names.count < limit else { return names }
+                names.insert(name)
+            }
+        }
+        return names
+    }
 
     public func compose(
         localContent: String,
@@ -56,7 +98,12 @@ public struct MergedHostsComposer: Sendable {
         sources: [SourceLayer],
         to tempURL: URL
     ) throws -> MergeStats {
-        var header = localContent
+        let localRaw = [localContent] + localFragments.map(\.content)
+        let localTexts = localRaw.map(Self.commentingWildcards)
+        let rules = WildcardCollector.rules(in: localRaw.map { HostsFile(parsing: $0) })
+        var shadowed: Set<String> = rules.isEmpty ? [] : Self.shadowed(in: localTexts, under: rules)
+
+        var header = localTexts[0]
         if !header.isEmpty && !header.hasSuffix("\n") { header += "\n" }
         try header.data(using: .utf8)!.write(to: tempURL, options: .atomic)
 
@@ -66,18 +113,20 @@ public struct MergedHostsComposer: Sendable {
 
         var perSource: [SourceStat] = []
         var total = 0
+        var fromSources: Set<String> = []
 
-        for fragment in localFragments {
+        for (index, fragment) in localFragments.enumerated() {
             let safeName = fragment.name.replacingOccurrences(of: "\r", with: " ")
                                         .replacingOccurrences(of: "\n", with: " ")
             try handle.write(contentsOf: Data("# \(safeName)\n".utf8))
-            let data = Data(fragment.content.utf8)
+            let data = Data(localTexts[index + 1].utf8)
             try handle.write(contentsOf: data)
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
-            let count = HostsScan.mappingLineCount(fragment.content)
-            perSource.append(SourceStat(name: fragment.name, domains: count))
+            let count = HostsScan.localDomainLineCount(fragment.content)
+            perSource.append(SourceStat(name: fragment.name, domains: count,
+                                        wildcards: HostsScan.wildcardLineCount(fragment.content)))
             total += count
         }
 
@@ -96,10 +145,16 @@ public struct MergedHostsComposer: Sendable {
             if let last = data.last, last != UInt8(ascii: "\n") {
                 try handle.write(contentsOf: Data("\n".utf8))
             }
+            if !rules.isEmpty {
+                fromSources.formUnion(Self.sourceShadowed(
+                    in: data, under: rules, limit: Self.maxSourceShadowedNames - fromSources.count))
+            }
             let count = source.domainCount ?? HostsScan.mappingLineCount(String(decoding: data, as: UTF8.self))
             perSource.append(SourceStat(name: source.name, domains: count))
             total += count
         }
-        return MergeStats(totalDomains: total, perSource: perSource)
+        shadowed.formUnion(fromSources)
+        return MergeStats(totalDomains: total, perSource: perSource,
+                          wildcards: WildcardSet(rules: rules, shadowedNames: shadowed))
     }
 }

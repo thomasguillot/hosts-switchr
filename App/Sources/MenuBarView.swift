@@ -19,6 +19,12 @@ struct MenuBarView: View {
                 }
             ))
         }
+        if !model.wildcards.menuLines.isEmpty {
+            Divider()
+            ForEach(model.wildcards.menuLines, id: \.self) { line in
+                Button(line) {}.disabled(true)
+            }
+        }
         Divider()
         Button {
             Task { await model.refreshAllSources() }
