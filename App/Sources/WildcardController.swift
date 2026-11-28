@@ -105,10 +105,9 @@ final class WildcardController {
     var menuLines: [String] {
         var lines: [String] = []
         if let served, !served.served.isEmpty {
-            let suffixes = served.served.rules.map { "*." + $0.suffix }.joined(separator: ", ")
             let port = String(served.port)
             switch serviceState {
-            case .ready: lines.append(String(localized: "Wildcards active: \(suffixes)"))
+            case .ready: break
             case .portInUse: lines.append(String(localized: "Wildcards stopped: port \(port) is in use"))
             case .failed(let message): lines.append(String(localized: "Wildcards stopped: \(message)"))
             case .stopped: lines.append(String(localized: "Wildcards stopped"))

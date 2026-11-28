@@ -4892,35 +4892,6 @@
         }
       }
     },
-    "Wildcards active: %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wildcards active: %@"
-          }
-        },
-        "en-GB": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wildcards active: %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Comodines activos: %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Jokers actifs : %@"
-          }
-        }
-      }
-    },
     "Wildcards stopped": {
       "extractionState": "manual",
       "localizations": {
